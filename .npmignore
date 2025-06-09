@@ -1,0 +1,38 @@
+# Source files (only include built dist/)
+src/
+test/
+scripts/
+
+# Development files
+.vscode/
+.idea/
+*.log
+*.tgz
+
+# Build artifacts
+tsconfig.json
+tsconfig.*.json
+vitest.config.ts
+biome.jsonc
+
+# Development dependencies
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Git and development
+.git/
+.gitignore
+.github/
+
+# Documentation that's not needed in package
+DEVELOPMENT_PLAN.md
+
+# Test coverage and build artifacts
+coverage/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.* 
