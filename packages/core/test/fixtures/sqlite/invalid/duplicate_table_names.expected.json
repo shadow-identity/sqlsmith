@@ -1,0 +1,5 @@
+{
+  "errorType": "DUPLICATE_STATEMENT_NAMES",
+  "exitCode": 3,
+  "messagePattern": "Duplicate statement names found: users"
+} 

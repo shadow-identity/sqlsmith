@@ -1,0 +1,1 @@
+{"version":3,"file":"validate-command.d.ts","sourceRoot":"","sources":["../../../src/cli/commands/validate-command.ts"],"names":[],"mappings":"AAGA,MAAM,MAAM,sBAAsB,GAAG;IACpC,OAAO,EAAE,MAAM,CAAC;IAChB,KAAK,EAAE,OAAO,CAAC;CACf,CAAC;AAEF;;GAEG;AACH,eAAO,MAAM,sBAAsB,GAClC,WAAW,MAAM,EACjB,SAAS,sBAAsB,KAC7B,OAAO,CAAC,IAAI,CA2Bd,CAAC"}

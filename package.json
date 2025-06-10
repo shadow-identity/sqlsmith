@@ -1,33 +1,15 @@
 {
-  "name": "sqlsmith",
-  "version": "1.0.0",
-  "description": "A sophisticated tool for merging SQL files with automatic dependency resolution using AST parsing and topological sorting",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "name": "sqlsmith-workspace",
+  "version": "0.2.0",
+  "description": "SQLsmith monorepo - SQL schema merging tools",
+  "private": true,
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "bin": {
-    "sqlsmith": "./dist/cli.js"
-  },
-  "files": [
-    "dist/**/*",
-    "README.md",
-    "LICENSE"
-  ],
   "scripts": {
-    "start": "node dist/cli.js",
-    "dev": "node --watch dist/cli.js",
-    "build": "tsc",
-    "prepublishOnly": "pnpm build",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "echo 'No linting configured'"
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec rm -rf dist",
+    "dev:cli": "pnpm --filter @sqlsmith/cli dev",
+    "dev:core": "pnpm --filter @sqlsmith/core test:watch"
   },
   "keywords": [
     "sql",
@@ -36,13 +18,10 @@
     "schema",
     "dependency",
     "topological-sort",
-    "foreign-key",
     "ast",
     "cli",
-    "postgresql",
-    "mysql",
-    "sqlite",
-    "bigquery"
+    "vite",
+    "plugin"
   ],
   "author": {
     "name": "Pavel Nedrigailov"
@@ -52,22 +31,13 @@
     "type": "git",
     "url": "git+https://github.com/shadow-identity/sqlsmith.git"
   },
-  "bugs": {
-    "url": "https://github.com/shadow-identity/sqlsmith/issues"
-  },
-  "homepage": "https://github.com/shadow-identity/sqlsmith#readme",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "commander": "^11.1.0",
-    "node-sql-parser": "^5.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.0-beta.6",
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "typescript": "^5.3.0"
   },
   "packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912"
 }

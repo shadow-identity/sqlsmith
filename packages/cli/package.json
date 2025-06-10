@@ -1,0 +1,50 @@
+{
+  "name": "@sqlsmith/cli",
+  "version": "0.2.0",
+  "description": "CLI for SQLsmith - SQL schema merging with dependency resolution",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "type": "module",
+  "bin": {
+    "sqlsmith": "./dist/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --watch dist/cli.js",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "sql",
+    "cli",
+    "merge",
+    "database", 
+    "schema",
+    "dependency"
+  ],
+  "author": {
+    "name": "Pavel Nedrigailov"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shadow-identity/sqlsmith.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@sqlsmith/core": "workspace:*",
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  }
+} 

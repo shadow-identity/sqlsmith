@@ -4,7 +4,7 @@ A sophisticated tool for merging SQL files with automatic dependency resolution 
 
 ## Features
 
-🔍 **Smart Dependency Detection** - Automatically analyzes FOREIGN KEY constraints to understand table dependencies  
+🔍 **Smart Table Dependency Detection** - Automatically analyzes FOREIGN KEY constraints in CREATE TABLE statements to understand table-to-table dependencies  
 🔄 **Topological Sorting** - Uses Kahn's algorithm to determine safe execution order  
 🛡️ **Circular Dependency Detection** - Prevents invalid schemas with clear error messages  
 🚫 **Duplicate Table Validation** - Detects duplicate table names across multiple files  
@@ -13,6 +13,29 @@ A sophisticated tool for merging SQL files with automatic dependency resolution 
 🎛️ **Configurable Options** - Control comments, headers, formatting, and validation behavior  
 🗃️ **Multi-Dialect Support** - PostgreSQL, MySQL, SQLite, and BigQuery  
 ⚡ **Fast & Reliable** - Built with TypeScript and comprehensive test coverage  
+
+### **Scope & Focus**
+
+SQLsmith is specifically designed for **SQL DDL statements** and focuses on:
+- ✅ **Table creation dependencies** via FOREIGN KEY constraints
+- ✅ **Table-to-table relationships** and reference chains
+- ✅ **Composite foreign keys** and complex table structures
+- ✅ **Self-referencing tables** (hierarchical structures)
+- ✅ **Sequences** (CREATE SEQUENCE statements that tables depend on)
+- ✅ **Views** (CREATE VIEW statements that depend on tables/other views)
+- ✅ **Mixed scenarios** combining tables, sequences, and views
+
+**Not currently supported:**
+- ❌ User-defined types (ENUM, DOMAIN, composite types)
+- ❌ Functions and stored procedures
+- ❌ Triggers and trigger functions
+- ❌ Materialized views  
+- ❌ Table inheritance or partitioning dependencies
+- ❌ Extensions and extension objects
+- ❌ Row Level Security policies
+- ❌ Indexes (they don't affect DDL creation order dependencies)
+
+This focused approach ensures reliable, fast processing of the most common schema migration scenario: **creating tables in the correct dependency order**.
 
 ## Installation
 
