@@ -49,7 +49,9 @@ describe('validateLogLevel', () => {
 });
 
 describe('handleCommandError', () => {
-	const mockHandleCommandError = vi.fn<[unknown], never>();
+	const mockHandleCommandError = vi.fn((_error?: unknown): never => {
+		throw new Error('mocked handleCommandError');
+	});
 
 	beforeEach(() => {
 		mockedLogger.mockClear();
@@ -62,7 +64,9 @@ describe('handleCommandError', () => {
 
 	it('should call ErrorHandler.handleCommandError', () => {
 		const error = new Error('test error');
-		handleCommandError(error, 'info');
+		expect(() => handleCommandError(error, 'info')).toThrow(
+			'mocked handleCommandError',
+		);
 		expect(mockedLogger).toHaveBeenCalledWith({ logLevel: 'info' });
 		expect(mockedErrorHandler).toHaveBeenCalledWith(
 			mockedLogger.mock.instances[0],
@@ -72,7 +76,9 @@ describe('handleCommandError', () => {
 
 	it('should call ErrorHandler.handleCommandError for "error" logLevel', () => {
 		const error = new Error('test error');
-		handleCommandError(error, 'error');
+		expect(() => handleCommandError(error, 'error')).toThrow(
+			'mocked handleCommandError',
+		);
 		expect(mockedLogger).toHaveBeenCalledWith({ logLevel: 'error' });
 		expect(mockedErrorHandler).toHaveBeenCalledWith(
 			mockedLogger.mock.instances[0],
