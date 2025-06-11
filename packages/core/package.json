@@ -1,6 +1,6 @@
 {
 	"name": "@sqlsmith/core",
-	"version": "0.2.0",
+	"version": "0.2.2",
 	"description": "Core SQL schema merging engine with dependency resolution",
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
@@ -53,7 +53,7 @@
 		"directory": "packages/core"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=24.0.0"
 	},
 	"dependencies": {
 		"node-sql-parser": "^5.0.0"
