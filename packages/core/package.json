@@ -1,6 +1,6 @@
 {
 	"name": "@sqlsmith/core",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"description": "Core SQL schema merging engine with dependency resolution",
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
