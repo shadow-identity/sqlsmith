@@ -1,22 +1,20 @@
+import type { AST } from 'node-sql-parser';
 import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
 
 export interface StatementProcessor {
+	getHandledTypes(): string[];
+
 	/**
 	 * Check if this processor can handle the given AST statement
 	 */
-	canProcess(statement: any): boolean;
+	canProcess(statement: AST): boolean;
 
 	/**
-	 * Extract SQL statements from the AST
+	 * Extract all statements from the given AST
 	 */
 	extractStatements(
-		ast: any,
+		ast: AST | AST[],
 		filePath: string,
 		dialect: SqlDialect,
 	): SqlStatement[];
-
-	/**
-	 * Get the statement types this processor handles
-	 */
-	getHandledTypes(): string[];
 }

@@ -1,6 +1,7 @@
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Logger, SqlMerger } from '@sqlsmith/core';
-import { existsSync, readdirSync, statSync } from 'fs';
-import { resolve } from 'path';
+import type { PluginContext } from 'rollup';
 import type { HmrContext, Plugin } from 'vite';
 
 export interface SqlsmithPluginOptions {
@@ -33,7 +34,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 	const isErrorOnly = options.logLevel === 'error';
 	const isSilent = options.logLevel === 'silent';
 	let sqlFiles: string[] = [];
-	let pluginContext: any;
+	let pluginContext: PluginContext;
 
 	return {
 		name: 'sqlsmith',
@@ -46,21 +47,14 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		},
 
 		buildStart() {
-			// Store plugin context for later use
 			pluginContext = this;
 
-			// Discover and register SQL files for watching
-			sqlFiles = discoverSqlFiles(options.input);
-
-			// Register SQL files with Vite's watcher
-			if (options.watch) {
-				sqlFiles.forEach((file) => {
-					this.addWatchFile(file);
-				});
+			if (isSilent) {
+				return;
 			}
 
-			// Initial merge
-			return generateSchema();
+			sqlFiles = discoverSqlFiles(options.input);
+			handleSqlChanges(sqlFiles, logger, options, pluginContext);
 		},
 
 		async handleHotUpdate(ctx: HmrContext) {
@@ -73,7 +67,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 					}
 				});
 				sqlFiles = sqlFiles.filter((file) => existsSync(file));
-				await generateSchema();
+				handleSqlChanges(sqlFiles, logger, options, pluginContext);
 				return [];
 			}
 
@@ -82,16 +76,13 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 				// If it's a new SQL file, add it to our tracking
 				if (!sqlFiles.includes(ctx.file)) {
 					sqlFiles.push(ctx.file);
-					if (pluginContext) {
-						pluginContext.addWatchFile(ctx.file);
-					}
 					if (!isErrorOnly && !isSilent) {
 						logger.info(`📁 SQLsmith: New SQL file detected -> ${ctx.file}`);
 					}
 				}
 
 				// Regenerate schema when SQL files change
-				await generateSchema();
+				handleSqlChanges(sqlFiles, logger, options, pluginContext);
 
 				// Return empty array to prevent default HMR behavior
 				// since we're handling schema generation ourselves
@@ -100,10 +91,27 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		},
 	};
 
-	async function generateSchema() {
+	function handleSqlChanges(
+		sqlFiles: string[],
+		logger: Logger,
+		options: SqlsmithPluginOptions,
+		pluginContext: PluginContext,
+	) {
+		if (!sqlFiles.length) {
+			logger.warn('No SQL files found.');
+			return;
+		}
+
+		// Register SQL files with Vite's watcher
+		if (options.watch) {
+			sqlFiles.forEach((file) => {
+				pluginContext.addWatchFile(file);
+			});
+		}
+
 		try {
 			const resolvedInput = resolve(options.input);
-			const parsedFiles = merger.parseSqlFile(
+			const parsedFiles = merger.parseSqlFiles(
 				resolvedInput,
 				options.dialect || 'postgresql',
 			);
@@ -128,6 +136,8 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 			if (!options.watch) {
 				throw error;
 			}
+
+			pluginContext.error(String(error));
 		}
 	}
 

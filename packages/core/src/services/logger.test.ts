@@ -150,8 +150,14 @@ describe('Logger', () => {
 					logger.header('Test Header');
 					if (shouldLog.header) {
 						expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-						expect(consoleMocks.info).toHaveBeenNthCalledWith(1, '\nTest Header');
-						expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '='.repeat(50));
+						expect(consoleMocks.info).toHaveBeenNthCalledWith(
+							1,
+							'\nTest Header',
+						);
+						expect(consoleMocks.info).toHaveBeenNthCalledWith(
+							2,
+							'='.repeat(50),
+						);
 					} else {
 						expect(consoleMocks.info).not.toHaveBeenCalled();
 					}
@@ -178,12 +184,21 @@ describe('Logger', () => {
 
 		it('should pass multiple arguments to console.error', () => {
 			logger.error('test error', 'extra', 'args', { object: true });
-			expect(consoleMocks.error).toHaveBeenCalledWith('❌ test error', 'extra', 'args', { object: true });
+			expect(consoleMocks.error).toHaveBeenCalledWith(
+				'❌ test error',
+				'extra',
+				'args',
+				{ object: true },
+			);
 		});
 
 		it('should pass multiple arguments to console.warn', () => {
 			logger.warn('test warning', 123, null);
-			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  test warning', 123, null);
+			expect(consoleMocks.warn).toHaveBeenCalledWith(
+				'⚠️  test warning',
+				123,
+				null,
+			);
 		});
 
 		it('should pass multiple arguments to console.info', () => {
@@ -193,17 +208,27 @@ describe('Logger', () => {
 
 		it('should pass multiple arguments to console.debug', () => {
 			logger.debug('test debug', { nested: { data: 'value' } });
-			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 test debug', { nested: { data: 'value' } });
+			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 test debug', {
+				nested: { data: 'value' },
+			});
 		});
 
 		it('should pass multiple arguments to success method', () => {
 			logger.success('test success', 'more', 'data');
-			expect(consoleMocks.info).toHaveBeenCalledWith('✅ test success', 'more', 'data');
+			expect(consoleMocks.info).toHaveBeenCalledWith(
+				'✅ test success',
+				'more',
+				'data',
+			);
 		});
 
 		it('should pass multiple arguments to raw method', () => {
 			logger.raw('raw message', 'arg1', 'arg2');
-			expect(consoleMocks.info).toHaveBeenCalledWith('raw message', 'arg1', 'arg2');
+			expect(consoleMocks.info).toHaveBeenCalledWith(
+				'raw message',
+				'arg1',
+				'arg2',
+			);
 		});
 	});
 
@@ -229,11 +254,15 @@ describe('Logger', () => {
 		});
 
 		it('should adapt separator length to title length when title is longer than 50 chars', () => {
-			const longTitle = 'This is a very long title that exceeds 50 characters for testing purposes';
+			const longTitle =
+				'This is a very long title that exceeds 50 characters for testing purposes';
 			logger.header(longTitle);
 			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
 			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, `\n${longTitle}`);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '='.repeat(longTitle.length));
+			expect(consoleMocks.info).toHaveBeenNthCalledWith(
+				2,
+				'='.repeat(longTitle.length),
+			);
 		});
 
 		it('should use minimum 50 character separator for short titles', () => {
@@ -320,7 +349,7 @@ describe('Logger', () => {
 			logger.warn('');
 			logger.info('');
 			logger.debug('');
-			
+
 			expect(consoleMocks.error).toHaveBeenCalledWith('❌ ');
 			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  ');
 			expect(consoleMocks.info).toHaveBeenCalledWith('');
@@ -335,20 +364,28 @@ describe('Logger', () => {
 				logger.debug('test', undefined, null);
 			}).not.toThrow();
 
-			expect(consoleMocks.error).toHaveBeenCalledWith('❌ test', undefined, null);
+			expect(consoleMocks.error).toHaveBeenCalledWith(
+				'❌ test',
+				undefined,
+				null,
+			);
 			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  test', undefined);
 			expect(consoleMocks.info).toHaveBeenCalledWith('test', null);
-			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 test', undefined, null);
+			expect(consoleMocks.debug).toHaveBeenCalledWith(
+				'🐛 test',
+				undefined,
+				null,
+			);
 		});
 
 		it('should handle complex objects', () => {
-			const complexObject = { 
-				array: [1, 2, 3], 
-				nested: { deep: 'value' }, 
+			const complexObject = {
+				array: [1, 2, 3],
+				nested: { deep: 'value' },
 				func: () => 'test',
 				date: new Date('2023-01-01'),
 			};
-			
+
 			logger.info('Complex:', complexObject);
 			expect(consoleMocks.info).toHaveBeenCalledWith('Complex:', complexObject);
 		});
@@ -373,4 +410,3 @@ describe('Logger', () => {
 		});
 	});
 });
-

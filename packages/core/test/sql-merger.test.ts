@@ -46,7 +46,7 @@ describe('SqlMerger', () => {
 
 		it('should parse SQL files in directory', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			expect(sqlFiles.length).toBeGreaterThan(0);
 			sqlFiles.forEach((file) => {
@@ -61,7 +61,7 @@ describe('SqlMerger', () => {
 			const nonExistentPath = resolve(process.cwd(), 'test/non-existent');
 
 			expect(() =>
-				merger.parseSqlFile(nonExistentPath, 'postgresql'),
+				merger.parseSqlFiles(nonExistentPath, 'postgresql'),
 			).toThrow();
 		});
 
@@ -70,14 +70,14 @@ describe('SqlMerger', () => {
 			const srcPath = resolve(process.cwd(), 'src');
 
 			expect(() => {
-				merger.parseSqlFile(srcPath, 'postgresql');
+				merger.parseSqlFiles(srcPath, 'postgresql');
 			}).toThrow(FileSystemError);
 		});
 
 		it('should work with different SQL dialects', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
 
-			const pgResult = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const pgResult = merger.parseSqlFiles(scenarioPath, 'postgresql');
 			// Note: SQLite parsing may have dialect-specific issues, so we only test PostgreSQL
 			// for now to avoid parser errors with SERIAL types
 			expect(pgResult.length).toBeGreaterThan(0);
@@ -85,7 +85,7 @@ describe('SqlMerger', () => {
 		});
 
 		it('should handle invalid SQL gracefully', () => {
-			// The parseSqlFile method should handle files with invalid SQL
+			// The parseSqlFiles method should handle files with invalid SQL
 			// by either parsing what it can or throwing descriptive errors
 			const invalidScenarioPath = getFixturePath(
 				'postgresql',
@@ -93,7 +93,7 @@ describe('SqlMerger', () => {
 			);
 
 			expect(() =>
-				merger.parseSqlFile(invalidScenarioPath, 'postgresql'),
+				merger.parseSqlFiles(invalidScenarioPath, 'postgresql'),
 			).toThrow(DependencyError);
 		});
 	});
@@ -170,7 +170,7 @@ describe('SqlMerger', () => {
 				describe('circular dependency fixtures', () => {
 					it('should detect circular dependencies and throw error', () => {
 						expect(() =>
-							merger.parseSqlFile(circularFixturesPath, dialect),
+							merger.parseSqlFiles(circularFixturesPath, dialect),
 						).toThrow(DependencyError);
 					});
 				});
@@ -215,7 +215,7 @@ describe('SqlMerger', () => {
 				'postgresql',
 				'correct/single_foreign_keys',
 			);
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			const merged = merger.mergeFiles(sqlFiles);
 
@@ -229,7 +229,7 @@ describe('SqlMerger', () => {
 
 		it('should merge files without comments when addComments=false', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			const merged = merger.mergeFiles(sqlFiles, { addComments: false });
 
@@ -240,7 +240,7 @@ describe('SqlMerger', () => {
 
 		it('should merge files without header when includeHeader=false', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			const merged = merger.mergeFiles(sqlFiles, { includeHeader: false });
 
@@ -251,7 +251,7 @@ describe('SqlMerger', () => {
 
 		it('should write output to file when outputPath is provided', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 			const outputPath = resolve(process.cwd(), 'test-output.sql');
 
 			// Clean up any existing file
@@ -274,7 +274,7 @@ describe('SqlMerger', () => {
 
 		it('should throw error for invalid output file path', () => {
 			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 			const invalidPath = '/invalid/path/that/does/not/exist/output.sql';
 
 			expect(() => {
@@ -342,7 +342,7 @@ describe('SqlMerger', () => {
 
 			// Should handle directories with no .sql files
 			expect(() => {
-				merger.parseSqlFile(emptyPath, 'postgresql');
+				merger.parseSqlFiles(emptyPath, 'postgresql');
 			}).toThrow(FileSystemError);
 		});
 
@@ -355,7 +355,7 @@ describe('SqlMerger', () => {
 
 			// In strict mode (allowReorderDropComments: false), should throw error for wrong order
 			expect(() => {
-				merger.parseSqlFile(badOrderPath, 'postgresql');
+				merger.parseSqlFiles(badOrderPath, 'postgresql');
 			}).toThrow('Invalid statement order');
 		});
 	});
@@ -368,7 +368,7 @@ describe('SqlMerger', () => {
 						const merger = new SqlMerger();
 						const scenarioPath = getFixturePath(dialect, `correct/${scenario}`);
 
-						const sqlFiles = merger.parseSqlFile(scenarioPath, dialect);
+						const sqlFiles = merger.parseSqlFiles(scenarioPath, dialect);
 						expect(sqlFiles.length).toBeGreaterThan(0);
 
 						const merged = merger.mergeFiles(sqlFiles);
@@ -402,11 +402,11 @@ describe('SqlMerger', () => {
 							);
 
 							expect(() =>
-								merger.parseSqlFile(scenarioPath, dialect),
+								merger.parseSqlFiles(scenarioPath, dialect),
 							).toThrow();
 
 							try {
-								merger.parseSqlFile(scenarioPath, dialect);
+								merger.parseSqlFiles(scenarioPath, dialect);
 								expect.fail(`Expected ${scenario} to throw an error`);
 							} catch (error) {
 								const errorMessage =
@@ -418,7 +418,7 @@ describe('SqlMerger', () => {
 						} else {
 							// Fallback to simple error expectation
 							expect(() =>
-								merger.parseSqlFile(scenarioPath, dialect),
+								merger.parseSqlFiles(scenarioPath, dialect),
 							).toThrow();
 						}
 					});
@@ -439,7 +439,7 @@ describe('SqlMerger', () => {
 				'postgresql',
 				'correct/self_referencing',
 			);
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			expect(sqlFiles.length).toBeGreaterThan(0);
 
@@ -453,7 +453,7 @@ describe('SqlMerger', () => {
 				'postgresql',
 				'correct/composite_foreign_keys',
 			);
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			expect(sqlFiles.length).toBeGreaterThan(0);
 
@@ -466,7 +466,7 @@ describe('SqlMerger', () => {
 				'postgresql',
 				'correct/complex_scenario',
 			);
-			const sqlFiles = merger.parseSqlFile(scenarioPath, 'postgresql');
+			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
 
 			expect(sqlFiles.length).toBeGreaterThan(0);
 
@@ -481,7 +481,7 @@ describe('SqlMerger', () => {
 			);
 
 			expect(() => {
-				merger.parseSqlFile(duplicatePath, 'postgresql');
+				merger.parseSqlFiles(duplicatePath, 'postgresql');
 			}).toThrow(DependencyError);
 		});
 	});
@@ -498,7 +498,7 @@ describe('SqlMerger', () => {
 
 			// The actual implementation wraps the error, so we check for the error message pattern
 			expect(() => {
-				merger.parseSqlFile(nonExistentPath, 'postgresql');
+				merger.parseSqlFiles(nonExistentPath, 'postgresql');
 			}).toThrow(/Failed to scan directory.*ENOENT/);
 		});
 
@@ -509,7 +509,7 @@ describe('SqlMerger', () => {
 			);
 
 			expect(() => {
-				merger.parseSqlFile(circularPath, 'postgresql');
+				merger.parseSqlFiles(circularPath, 'postgresql');
 			}).toThrow(DependencyError);
 		});
 
@@ -520,7 +520,7 @@ describe('SqlMerger', () => {
 			);
 
 			expect(() => {
-				merger.parseSqlFile(duplicatePath, 'postgresql');
+				merger.parseSqlFiles(duplicatePath, 'postgresql');
 			}).toThrow(DependencyError);
 		});
 	});

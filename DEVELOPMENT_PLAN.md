@@ -6,10 +6,10 @@ Build a SQL merger tool that uses AST parsing and topological sorting to properl
 ## Development Phases
 
 ### ✅ Phase 1: Basic File Discovery and Reading - COMPLETED
-**Goal**: Make `parseSqlFile` accept path to schema sources, find SQL files, and read their content.
+**Goal**: Make `parseSqlFiles` accept path to schema sources, find SQL files, and read their content.
 
 **Tasks**:
-- [x] Update `parseSqlFile` to accept directory path and SQL dialect
+- [x] Update `parseSqlFiles` to accept directory path and SQL dialect
 - [x] Implement SQL file discovery (find all `.sql` files in directory)
 - [x] Read file contents and log them with `console.log`
 - [x] Add basic error handling for file operations

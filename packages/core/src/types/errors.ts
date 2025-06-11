@@ -171,11 +171,16 @@ export class DependencyError extends SqlMergerError {
 		const cycleDescriptions = cycles
 			.map((cycle) => cycle.join(' → '))
 			.join(', ');
-		return new DependencyError(
+		const error = new DependencyError(
 			`Circular dependencies detected: ${cycleDescriptions}`,
 			ErrorCode.CIRCULAR_DEPENDENCY,
 			{ cycles, cycleDescriptions },
 		);
+
+		// Remove verbose stack trace – keep only the first line (name & message)
+		error.stack = `${error.name}: ${error.message}`;
+
+		return error;
 	}
 
 	static duplicateStatementNames(

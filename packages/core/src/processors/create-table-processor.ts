@@ -1,3 +1,4 @@
+import type { AST, Create as CreateTable } from 'node-sql-parser';
 import type {
 	Dependency,
 	SqlDialect,
@@ -6,7 +7,7 @@ import type {
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateTableProcessor implements StatementProcessor {
-	canProcess(statement: any): boolean {
+	canProcess(statement: AST): boolean {
 		return statement?.type === 'create' && statement?.keyword === 'table';
 	}
 
@@ -15,20 +16,23 @@ export class CreateTableProcessor implements StatementProcessor {
 	}
 
 	extractStatements(
-		ast: any,
+		ast: AST | AST[],
 		filePath: string,
 		dialect: SqlDialect,
 	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
-		const astStatements = Array.isArray(ast) ? ast : [ast];
 
-		for (const statement of astStatements) {
+		const astArray = Array.isArray(ast) ? ast : [ast];
+
+		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				const tableName = statement.table?.[0]?.table || statement.table?.table;
+				const dependencies = this.#extractTableDependencies(
+					statement as CreateTable,
+				);
+
+				const tableName = (statement as CreateTable).table?.[0]?.table;
 
 				if (tableName) {
-					const dependencies = this.#extractTableDependencies(statement);
-
 					statements.push({
 						type: 'table',
 						name: tableName,
@@ -44,40 +48,42 @@ export class CreateTableProcessor implements StatementProcessor {
 		return statements;
 	}
 
-	#extractTableDependencies(statement: any): Dependency[] {
+	#extractTableDependencies(statement: CreateTable): Dependency[] {
 		const dependencies: Dependency[] = [];
 
-		// Look for FOREIGN KEY constraints in create_definitions
 		if (statement.create_definitions) {
-			for (const item of statement.create_definitions) {
-				// Handle FOREIGN KEY constraints
+			for (const definition of statement.create_definitions) {
+				// Constraint-level FOREIGN KEY (e.g. `FOREIGN KEY (...) REFERENCES other(id)`)
 				if (
-					item.constraint_type === 'FOREIGN KEY' &&
-					item.reference_definition
+					'constraint_type' in definition &&
+					definition.constraint_type === 'FOREIGN KEY' &&
+					'reference_definition' in definition &&
+					definition.reference_definition &&
+					Array.isArray(definition.reference_definition.table)
 				) {
-					const refTable =
-						item.reference_definition.table?.[0]?.table ||
-						item.reference_definition.table?.table;
-
-					if (refTable && !dependencies.find((d) => d.name === refTable)) {
-						dependencies.push({
-							name: refTable,
-							type: 'table',
-						});
+					for (const tbl of definition.reference_definition.table) {
+						if (tbl?.table) {
+							dependencies.push({
+								name: tbl.table,
+								type: 'table',
+							});
+						}
 					}
 				}
 
-				// Handle column-level REFERENCES
-				if (item.resource === 'column' && item.reference_definition) {
-					const refTable =
-						item.reference_definition.table?.[0]?.table ||
-						item.reference_definition.table?.table;
-
-					if (refTable && !dependencies.find((d) => d.name === refTable)) {
-						dependencies.push({
-							name: refTable,
-							type: 'table',
-						});
+				// Column-level `REFERENCES other(id)`
+				if (
+					'reference_definition' in definition &&
+					definition.reference_definition &&
+					Array.isArray(definition.reference_definition.table)
+				) {
+					for (const tbl of definition.reference_definition.table) {
+						if (tbl?.table) {
+							dependencies.push({
+								name: tbl.table,
+								type: 'table',
+							});
+						}
 					}
 				}
 			}

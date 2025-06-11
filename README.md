@@ -206,7 +206,7 @@ import { SqlMerger } from 'sqlsmith';
 const merger = new SqlMerger();
 
 // Parse SQL files from directory
-const sqlFiles = merger.parseSqlFile('./schemas', 'postgresql');
+const sqlFiles = merger.parseSqlFiles('./schemas', 'postgresql');
 
 // Merge files with options
 const merged = merger.mergeFiles(sqlFiles, {

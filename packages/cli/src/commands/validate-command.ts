@@ -1,9 +1,10 @@
+import { resolve } from 'node:path';
+import type { LogLevel } from '@sqlsmith/core';
 import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
-import { resolve } from 'path';
 
 export type ValidateCommandOptions = {
-	dialect: string;
-	quiet: boolean;
+	dialect: SqlDialect;
+	logLevel: LogLevel;
 };
 
 /**
@@ -15,25 +16,20 @@ export const executeValidateCommand = async (
 ): Promise<void> => {
 	const container = new ServiceContainer({
 		loggerOptions: {
-			logLevel: options.quiet ? 'error' : 'info',
+			logLevel: options.logLevel,
 		},
 	});
 
 	const logger = container.getLogger();
-	const validator = container.getFileSystemValidator();
 
-	// Resolve and validate input path
+	// Resolve input path (already validated by CLI layer)
 	const resolvedInput = resolve(inputPath);
-	validator.validateInputDirectory(resolvedInput);
-
-	// Validate dialect
-	validator.validateDialect(options.dialect);
 
 	// Create merger with container
 	const merger = SqlMerger.withContainer(container);
 
 	try {
-		merger.validateFiles(resolvedInput, options.dialect as SqlDialect);
+		await merger.validateFiles(resolvedInput, options.dialect);
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`Validation failed: ${errorMessage}`);

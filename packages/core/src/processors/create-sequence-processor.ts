@@ -1,42 +1,43 @@
-import type {
-	Dependency,
-	SqlDialect,
-	SqlStatement,
-} from '../types/sql-statement.js';
+import type { AST } from 'node-sql-parser';
+import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateSequenceProcessor implements StatementProcessor {
-	canProcess(statement: any): boolean {
-		return statement?.type === 'create' && statement?.keyword === 'sequence';
-	}
-
 	getHandledTypes(): string[] {
 		return ['sequence'];
 	}
 
+	canProcess(statement: AST): boolean {
+		// TODO: The 'keyword' property on the Create type from node-sql-parser
+		// doesn't seem to include 'sequence'. Using 'any' for now.
+		return (
+			statement?.type === 'create' && (statement as any)?.keyword === 'sequence'
+		);
+	}
+
+	/**
+	 * Extracts sequence statements from the given AST.
+	 */
 	extractStatements(
-		ast: any,
+		ast: AST | AST[],
 		filePath: string,
-		dialect: SqlDialect,
+		_dialect: SqlDialect,
 	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
-		const astStatements = Array.isArray(ast) ? ast : [ast];
+		const astArray = Array.isArray(ast) ? ast : [ast];
 
-		for (const statement of astStatements) {
+		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				const sequenceName =
-					statement.sequence?.[0]?.table ||
-					statement.sequence?.table ||
-					statement.name;
+				// TODO: The Create type from node-sql-parser doesn't have a clear
+				// property for the sequence name. Using 'any' for now based on
+				// previous implementation.
+				const sequenceName = (statement as any).sequence?.[0]?.table;
 
 				if (sequenceName) {
-					// Sequences typically have no dependencies - they're usually created first
-					const dependencies: Dependency[] = [];
-
 					statements.push({
 						type: 'sequence',
 						name: sequenceName,
-						dependsOn: dependencies,
+						dependsOn: [], // Sequences typically don't have dependencies
 						filePath,
 						content: '', // Will be filled by the file parser
 						ast: statement,

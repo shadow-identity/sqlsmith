@@ -1,3 +1,4 @@
+import type { AST, Create as CreateView, Select } from 'node-sql-parser';
 import type {
 	Dependency,
 	SqlDialect,
@@ -6,30 +7,35 @@ import type {
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateViewProcessor implements StatementProcessor {
-	canProcess(statement: any): boolean {
-		return statement?.type === 'create' && statement?.keyword === 'view';
-	}
-
 	getHandledTypes(): string[] {
 		return ['view'];
 	}
 
+	canProcess(statement: AST): boolean {
+		return statement?.type === 'create' && statement?.keyword === 'view';
+	}
+
+	/**
+	 * Extracts view statements from the given AST.
+	 */
 	extractStatements(
-		ast: any,
+		ast: AST | AST[],
 		filePath: string,
 		dialect: SqlDialect,
 	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
-		const astStatements = Array.isArray(ast) ? ast : [ast];
+		const astArray = Array.isArray(ast) ? ast : [ast];
 
-		for (const statement of astStatements) {
+		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				const viewName =
-					statement.view?.view || statement.view?.table || statement.name;
+				// TODO: The Create type from node-sql-parser doesn't have a 'view'
+				// property. Using 'any' for now.
+				const viewName = (statement as any).view;
 
 				if (viewName) {
-					const dependencies = this.#extractViewDependencies(statement);
-
+					const dependencies = this.#extractViewDependencies(
+						statement as CreateView,
+					);
 					statements.push({
 						type: 'view',
 						name: viewName,
@@ -45,74 +51,38 @@ export class CreateViewProcessor implements StatementProcessor {
 		return statements;
 	}
 
-	#extractViewDependencies(statement: any): Dependency[] {
+	#extractViewDependencies(statement: CreateView): Dependency[] {
 		const dependencies: Dependency[] = [];
 
-		// Extract table/view references from the SELECT statement
-		const selectStatement = statement.select || statement.definition;
+		// TODO: The Create type from node-sql-parser doesn't have a 'definition'
+		// property for views. Using 'any' for now.
+		const definition = (statement as any).definition;
+		if (definition) {
+			const selectStatement = definition as Select;
+			const tables = this.#extractTableReferencesFromSelect(selectStatement);
 
-		if (selectStatement) {
-			const tableReferences =
-				this.#extractTableReferencesFromSelect(selectStatement);
-
-			for (const tableName of tableReferences) {
-				if (!dependencies.find((d) => d.name === tableName)) {
-					// We don't know if it's a table or view at this point,
-					// dependency analyzer will resolve this later
-					dependencies.push({
-						name: tableName,
-						type: 'table', // Default assumption, will be refined later
-					});
-				}
+			for (const table of tables) {
+				dependencies.push({
+					name: table,
+					type: 'table',
+				});
 			}
 		}
 
 		return dependencies;
 	}
 
-	#extractTableReferencesFromSelect(selectStatement: any): string[] {
+	#extractTableReferencesFromSelect(selectStatement: Select): string[] {
 		const tables: string[] = [];
 
-		// Handle different SELECT statement structures
-		if (selectStatement.from) {
-			const fromClauses = Array.isArray(selectStatement.from)
-				? selectStatement.from
-				: [selectStatement.from];
-
-			for (const fromClause of fromClauses) {
-				if (fromClause.table) {
-					const tableName = fromClause.table;
-					if (tableName && typeof tableName === 'string') {
-						tables.push(tableName);
-					}
+		if (selectStatement.from && Array.isArray(selectStatement.from)) {
+			for (const from of selectStatement.from) {
+				if ('table' in from && from.table) {
+					tables.push(from.table);
 				}
 			}
 		}
 
-		// Handle JOINs
-		if (selectStatement.join) {
-			const joins = Array.isArray(selectStatement.join)
-				? selectStatement.join
-				: [selectStatement.join];
-
-			for (const join of joins) {
-				if (join.table) {
-					const tableName = join.table;
-					if (tableName && typeof tableName === 'string') {
-						tables.push(tableName);
-					}
-				}
-			}
-		}
-
-		// Handle subqueries recursively
-		if (selectStatement.subquery) {
-			const subqueryTables = this.#extractTableReferencesFromSelect(
-				selectStatement.subquery,
-			);
-			tables.push(...subqueryTables);
-		}
-
-		return [...new Set(tables)]; // Remove duplicates
+		return tables;
 	}
 }

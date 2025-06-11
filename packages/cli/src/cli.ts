@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 
 import { ErrorHandler, Logger } from '@sqlsmith/core';
-import { Command } from 'commander';
-import { readFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { Command, Option } from 'commander';
 import {
 	executeInfoCommand,
 	executeMergeCommand,
@@ -12,39 +9,15 @@ import {
 	type InfoCommandOptions,
 	type MergeCommandOptions,
 	type ValidateCommandOptions,
-} from './cli/commands/index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Read version from package.json
-const getVersion = (): string => {
-	const packageJsonPath = resolve(__dirname, '../package.json');
-
-	try {
-		const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-
-		if (!packageJson?.version || typeof packageJson.version !== 'string') {
-			throw new Error('No valid version found in package.json');
-		}
-
-		return packageJson.version;
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Failed to read version from package.json: ${message}`);
-	}
-};
+} from './commands/index.js';
+import {
+	getVersion,
+	handleCommandError,
+	prepareContext,
+	validateLogLevel,
+} from './utils.js';
 
 const VERSION = getVersion();
-
-/**
- * Handle command errors with consistent formatting
- */
-const handleCommandError = (error: unknown, quiet: boolean): void => {
-	const logger = new Logger({ logLevel: quiet ? 'error' : 'info' });
-	const errorHandler = new ErrorHandler(logger);
-	errorHandler.handleCommandError(error, quiet);
-};
 
 /**
  * Create and configure the CLI program
@@ -67,20 +40,29 @@ export const createProgram = (): Command => {
 			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
 			'postgresql',
 		)
-		.option('--no-comments', 'Disable file comments in output')
-		.option('--no-header', 'Disable header comment in output')
-		.option('--no-separate', 'Disable statement separation')
 		.option(
 			'--allow-reorder-drop-comments',
 			'Allow reordering statements within files (drops comments)',
 		)
-		.option('--quiet', 'Reduce console output')
-		.option('--verbose', 'Increase console output for debugging')
+		.addOption(
+			new Option('--log-level <level>', 'Set log level')
+				.choices(['error', 'warn', 'info', 'debug'])
+				.default('info'),
+		)
 		.action(async (input: string, options: MergeCommandOptions) => {
 			try {
-				await executeMergeCommand(input, options);
+				const { resolvedInput, resolvedOutput, logLevel } = prepareContext(
+					input,
+					options,
+				);
+
+				await executeMergeCommand(resolvedInput, {
+					...options,
+					output: resolvedOutput,
+					logLevel,
+				});
 			} catch (error) {
-				handleCommandError(error, options.quiet);
+				handleCommandError(error, validateLogLevel(options.logLevel));
 			}
 		});
 
@@ -94,12 +76,18 @@ export const createProgram = (): Command => {
 			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
 			'postgresql',
 		)
-		.option('--quiet', 'Reduce console output')
+		.addOption(
+			new Option('--log-level <level>', 'Set log level')
+				.choices(['error', 'warn', 'info', 'debug'])
+				.default('info'),
+		)
 		.action(async (input: string, options: InfoCommandOptions) => {
 			try {
-				await executeInfoCommand(input, options);
+				const { resolvedInput, logLevel } = prepareContext(input, options);
+
+				await executeInfoCommand(resolvedInput, { ...options, logLevel });
 			} catch (error) {
-				handleCommandError(error, options.quiet);
+				handleCommandError(error, validateLogLevel(options.logLevel));
 			}
 		});
 
@@ -113,12 +101,18 @@ export const createProgram = (): Command => {
 			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
 			'postgresql',
 		)
-		.option('--quiet', 'Reduce console output')
+		.addOption(
+			new Option('--log-level <level>', 'Set log level')
+				.choices(['error', 'warn', 'info', 'debug'])
+				.default('info'),
+		)
 		.action(async (input: string, options: ValidateCommandOptions) => {
 			try {
-				await executeValidateCommand(input, options);
+				const { resolvedInput, logLevel } = prepareContext(input, options);
+
+				await executeValidateCommand(resolvedInput, { ...options, logLevel });
 			} catch (error) {
-				handleCommandError(error, options.quiet);
+				handleCommandError(error, validateLogLevel(options.logLevel));
 			}
 		});
 

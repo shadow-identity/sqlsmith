@@ -9,7 +9,7 @@ export { CreateViewProcessor } from './processors/create-view-processor.js';
 export { DependencyAnalyzer } from './services/dependency-analyzer.js';
 export { ErrorHandler } from './services/error-handler.js';
 export { FileSystemValidator } from './services/file-system-validator.js';
-export type { LoggerOptions } from './services/logger.js';
+export type { LoggerOptions, LogLevel } from './services/logger.js';
 export { Logger } from './services/logger.js';
 // Dependency injection
 export type { ServiceConfiguration } from './services/service-container.js';

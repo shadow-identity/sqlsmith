@@ -73,7 +73,7 @@ export class SqlMerger {
 	/**
 	 * Parse SQL files from a directory
 	 */
-	parseSqlFile(
+	parseSqlFiles(
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
 		options: SqlMergerOptions = {},
@@ -137,7 +137,7 @@ export class SqlMerger {
 			);
 
 			return sqlFiles;
-		}, 'parseSqlFile')();
+		}, 'parseSqlFiles')();
 	}
 
 	/**
@@ -187,7 +187,7 @@ export class SqlMerger {
 		this.#errorHandler.wrapWithErrorHandling(() => {
 			this.#logger.header('🔍 SQL Dependency Analyzer');
 
-			const sqlFiles = this.parseSqlFile(directoryPath, dialect);
+			const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
 
 			const allStatements: SqlStatement[] = [];
 			for (const file of sqlFiles) {
@@ -224,7 +224,7 @@ export class SqlMerger {
 		this.#errorHandler.wrapWithErrorHandling(() => {
 			this.#logger.header('✅ SQL Validator');
 
-			const sqlFiles = this.parseSqlFile(directoryPath, dialect);
+			const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
 
 			const allStatements: SqlStatement[] = [];
 			for (const file of sqlFiles) {

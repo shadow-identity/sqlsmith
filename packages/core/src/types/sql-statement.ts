@@ -1,3 +1,5 @@
+import type { AST } from 'node-sql-parser';
+
 export type StatementType =
 	| 'table'
 	| 'view'
@@ -19,17 +21,17 @@ export interface SqlStatement {
 	filePath: string;
 	content: string;
 	lineNumber?: number;
-	ast?: any; // Store the parsed AST for debugging
+	ast?: AST;
 }
 
 export interface SqlFile {
 	path: string;
 	content: string;
 	statements: SqlStatement[];
-	ast?: any;
+	ast?: AST | AST[];
 }
 
 export interface ParseResult {
-	ast: any;
+	ast: AST | AST[];
 	statements: SqlStatement[];
 }

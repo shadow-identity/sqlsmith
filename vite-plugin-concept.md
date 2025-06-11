@@ -120,7 +120,7 @@ export function sqlsmith(options: SqlsmithPluginOptions): Plugin {
   async function generateSchema() {
     try {
       const sqlFiles = merger.findSqlFiles(options.input)
-      const parsed = sqlFiles.map(file => merger.parseSqlFile(file, options.dialect))
+      const parsed = sqlFiles.map(file => merger.parseSqlFiles(file, options.dialect))
       
       const merged = merger.mergeFiles(parsed, {
         addComments: options.includeComments ?? true,
