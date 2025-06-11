@@ -30,7 +30,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint code
-        run: pnpm exec biome check
+        run: pnpm exec biome ci --diagnostic-level=error
 
       - name: Run tests
         run: pnpm test
