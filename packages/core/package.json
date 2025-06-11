@@ -28,6 +28,9 @@
 		"dist/**/*",
 		"README.md"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"build": "tsc",
 		"test": "vitest run",

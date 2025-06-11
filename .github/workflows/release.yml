@@ -102,7 +102,7 @@ jobs:
         run: pnpm --filter @sqlsmith/core build
 
       - name: Publish core package
-        run: pnpm --filter @sqlsmith/core publish --no-git-checks
+        run: pnpm --filter @sqlsmith/core publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -134,7 +134,7 @@ jobs:
         run: pnpm --filter @sqlsmith/cli build
 
       - name: Publish CLI package
-        run: pnpm --filter @sqlsmith/cli publish --no-git-checks
+        run: pnpm --filter @sqlsmith/cli publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -166,7 +166,7 @@ jobs:
         run: pnpm --filter @sqlsmith/vite-plugin build
 
       - name: Publish vite-plugin package
-        run: pnpm --filter @sqlsmith/vite-plugin publish --no-git-checks
+        run: pnpm --filter @sqlsmith/vite-plugin publish --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

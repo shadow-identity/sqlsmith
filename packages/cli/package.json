@@ -12,6 +12,9 @@
 		"dist/**/*",
 		"README.md"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"build": "tsc",
 		"dev": "node --watch dist/cli.js",
