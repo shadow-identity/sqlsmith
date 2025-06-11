@@ -48,7 +48,9 @@ coverage/
 
 # Vite build output
 # Note: keeping dist/ folders version-controlled since no CI yet
-# dist/
+dist/
+/dist
+*.dist
 # packages/*/dist/
 
 # yarn v2
