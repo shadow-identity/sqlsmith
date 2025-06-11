@@ -1,6 +1,6 @@
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import pkg from 'node-sql-parser';
-import { extname, join } from 'path';
 const { Parser } = pkg;
 export class SqlFileParser {
     #parser = new Parser();

@@ -4,6 +4,7 @@ export interface SqlsmithPluginOptions {
     output: string;
     dialect?: 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
     watch?: boolean;
+    logLevel?: 'silent' | 'error' | 'normal' | 'verbose';
 }
-export declare function sqlsmith(options: SqlsmithPluginOptions): Plugin;
+export declare const sqlsmith: (options: SqlsmithPluginOptions) => Plugin;
 //# sourceMappingURL=index.d.ts.map

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync } from 'fs';
-import { dirname, extname } from 'path';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { dirname, extname } from 'node:path';
 
 export class FileSystemValidator {
 	/**

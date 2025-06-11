@@ -49,7 +49,9 @@ export class CreateViewProcessor {
         const tables = [];
         // Handle different SELECT statement structures
         if (selectStatement.from) {
-            const fromClauses = Array.isArray(selectStatement.from) ? selectStatement.from : [selectStatement.from];
+            const fromClauses = Array.isArray(selectStatement.from)
+                ? selectStatement.from
+                : [selectStatement.from];
             for (const fromClause of fromClauses) {
                 if (fromClause.table) {
                     const tableName = fromClause.table;
@@ -61,7 +63,9 @@ export class CreateViewProcessor {
         }
         // Handle JOINs
         if (selectStatement.join) {
-            const joins = Array.isArray(selectStatement.join) ? selectStatement.join : [selectStatement.join];
+            const joins = Array.isArray(selectStatement.join)
+                ? selectStatement.join
+                : [selectStatement.join];
             for (const join of joins) {
                 if (join.table) {
                     const tableName = join.table;

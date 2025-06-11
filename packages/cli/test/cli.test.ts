@@ -11,13 +11,13 @@ import {
 } from '../src/cli/commands/index.js';
 import { createProgram } from '../src/cli.js';
 
-// Mock console methods to capture output
-let mockConsoleLog: any;
-let mockConsoleError: any;
-let mockProcessExit: any;
+// Mock variables
 let mockSqlMergerInstance: any;
+let mockLoggerInstance: any;
+let mockProcessExit: any;
 // Global variable to share mock instance
 let globalMockSqlMergerInstance: any;
+let globalMockLoggerInstance: any;
 
 // Mock @sqlsmith/core
 vi.mock('@sqlsmith/core', () => {
@@ -35,6 +35,16 @@ vi.mock('@sqlsmith/core', () => {
 		validateFiles: vi.fn(),
 	});
 
+	const createMockLogger = () => ({
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+		success: vi.fn(),
+		raw: vi.fn(),
+		header: vi.fn(),
+	});
+
 	const MockSqlMerger = vi.fn(() => {
 		if (!globalMockSqlMergerInstance) {
 			globalMockSqlMergerInstance = createMockInstance();
@@ -50,47 +60,45 @@ vi.mock('@sqlsmith/core', () => {
 		return globalMockSqlMergerInstance;
 	});
 
-	const MockServiceContainer = vi.fn((options?: any) => ({
-		getLogger: vi.fn(() => ({
-			info: vi.fn((msg: string) => {
-				if (!options?.loggerOptions?.quiet) {
-					console.log(msg);
-				}
-			}),
-			warn: vi.fn((msg: string) => console.log(msg)),
-			error: vi.fn((msg: string) => console.error(msg)),
-			debug: vi.fn((msg: string) => console.log(msg)),
-			success: vi.fn((msg: string) => console.log(msg)),
-			raw: vi.fn((msg: string) => console.log(msg)),
-		})),
-		getFileSystemValidator: vi.fn(() => ({
-			validateInputDirectory: vi.fn((path: string) => {
-				if (!fs.existsSync(path)) {
-					throw new Error(`Input directory does not exist: ${path}`);
-				}
-				const stats = fs.statSync(path);
-				if (!stats.isDirectory()) {
-					throw new Error(`Input path is not a directory: ${path}`);
-				}
-			}),
-			validateOutputDirectory: vi.fn((path: string) => {
-				const dir = require('path').dirname(path);
-				if (!fs.existsSync(dir)) {
-					throw new Error(`Output directory does not exist: ${dir}`);
-				}
-			}),
-			validateDialect: vi.fn((dialect: string) => {
-				const supported = ['postgresql', 'mysql', 'sqlite', 'bigquery'];
-				if (!supported.includes(dialect)) {
-					throw new Error(`Invalid dialect: ${dialect}. Supported dialects: ${supported.join(', ')}`);
-				}
-			}),
-		})),
-		getSqlMerger: vi.fn(() => new MockSqlMerger()),
-		getErrorHandler: vi.fn(() => ({
-			handle: vi.fn(),
-		})),
-	}));
+	const MockServiceContainer = vi.fn((options?: any) => {
+		// Use shared logger instance
+		if (!globalMockLoggerInstance) {
+			globalMockLoggerInstance = createMockLogger();
+		}
+
+		return {
+			getLogger: vi.fn(() => globalMockLoggerInstance),
+			getFileSystemValidator: vi.fn(() => ({
+				validateInputDirectory: vi.fn((path: string) => {
+					if (!fs.existsSync(path)) {
+						throw new Error(`Input directory does not exist: ${path}`);
+					}
+					const stats = fs.statSync(path);
+					if (!stats.isDirectory()) {
+						throw new Error(`Input path is not a directory: ${path}`);
+					}
+				}),
+				validateOutputDirectory: vi.fn((path: string) => {
+					const dir = require('path').dirname(path);
+					if (!fs.existsSync(dir)) {
+						throw new Error(`Output directory does not exist: ${dir}`);
+					}
+				}),
+				validateDialect: vi.fn((dialect: string) => {
+					const supported = ['postgresql', 'mysql', 'sqlite', 'bigquery'];
+					if (!supported.includes(dialect)) {
+						throw new Error(
+							`Invalid dialect: ${dialect}. Supported dialects: ${supported.join(', ')}`,
+						);
+					}
+				}),
+			})),
+			getSqlMerger: vi.fn(() => new MockSqlMerger()),
+			getErrorHandler: vi.fn(() => ({
+				handle: vi.fn(),
+			})),
+		};
+	});
 
 	const MockConfigurationError = class extends Error {
 		static invalidOptions(field: string, message: string): Error {
@@ -152,18 +160,40 @@ const mergeCommand = executeMergeCommand;
 const infoCommand = executeInfoCommand;
 const validateCommand = executeValidateCommand;
 
+// Test data
+const mockSqlFiles: any[] = [
+	{
+		path: '/test/foo.sql',
+		content: 'CREATE TABLE foo (a INT);',
+		dependencies: [
+			{
+				tableName: 'foo',
+				dependsOn: [] as string[],
+			},
+		],
+	},
+	{
+		path: '/test/bar.sql',
+		content: 'CREATE TABLE bar (b INT, FOREIGN KEY (b) REFERENCES foo(a));',
+		dependencies: [
+			{
+				tableName: 'bar',
+				dependsOn: ['foo'] as string[],
+			},
+		],
+	},
+];
+
 describe('CLI Interface', () => {
 	beforeEach(() => {
-		// Setup console spies before other mocks
-		mockConsoleLog = vi.spyOn(console, 'log');
-		mockConsoleError = vi.spyOn(console, 'error');
+		// Setup process.exit spy
 		mockProcessExit = vi
 			.spyOn(process, 'exit')
 			.mockImplementation((code?: number | string | null | undefined) => {
 				throw new Error(`process.exit unexpectedly called with "${code}"`);
 			});
 
-		// Ensure global mock instance is created
+		// Ensure global mock instances are created
 		if (!globalMockSqlMergerInstance) {
 			globalMockSqlMergerInstance = {
 				parseSqlFile: vi.fn().mockReturnValue([]),
@@ -179,11 +209,30 @@ describe('CLI Interface', () => {
 			};
 		}
 
-		// Use the global mock instance
+		if (!globalMockLoggerInstance) {
+			globalMockLoggerInstance = {
+				info: vi.fn(),
+				warn: vi.fn(),
+				error: vi.fn(),
+				debug: vi.fn(),
+				success: vi.fn(),
+				raw: vi.fn(),
+				header: vi.fn(),
+			};
+		}
+
+		// Use the global mock instances
 		mockSqlMergerInstance = globalMockSqlMergerInstance;
+		mockLoggerInstance = globalMockLoggerInstance;
 
 		// Clear all mock call counts
 		Object.values(mockSqlMergerInstance).forEach((mock: any) => {
+			if (typeof mock.mockClear === 'function') {
+				mock.mockClear();
+			}
+		});
+
+		Object.values(mockLoggerInstance).forEach((mock: any) => {
 			if (typeof mock.mockClear === 'function') {
 				mock.mockClear();
 			}
@@ -247,29 +296,6 @@ describe('CLI Interface', () => {
 	});
 
 	describe('Merge Command', () => {
-		const mockSqlFiles: any[] = [
-			{
-				path: '/test/foo.sql',
-				content: 'CREATE TABLE foo (a INT);',
-				dependencies: [
-					{
-						tableName: 'foo',
-						dependsOn: [] as string[],
-					},
-				],
-			},
-			{
-				path: '/test/bar.sql',
-				content: 'CREATE TABLE bar (b INT, FOREIGN KEY (b) REFERENCES foo(a));',
-				dependencies: [
-					{
-						tableName: 'bar',
-						dependsOn: ['foo'] as string[],
-					},
-				],
-			},
-		];
-
 		it('should execute merge command successfully', async () => {
 			const options: CliOptions = {
 				dialect: 'postgresql',
@@ -299,7 +325,7 @@ describe('CLI Interface', () => {
 					outputPath: undefined,
 				},
 			);
-			expect(mockConsoleLog).toHaveBeenCalledWith('🔧 SQL Merger');
+			expect(mockLoggerInstance.info).toHaveBeenCalledWith('🔧 SQL Merger');
 		});
 
 		it('should handle quiet mode correctly', async () => {
@@ -318,8 +344,11 @@ describe('CLI Interface', () => {
 
 			await mergeCommand('/test/input', options);
 
-			// Should not log the header in quiet mode
-			expect(mockConsoleLog).not.toHaveBeenCalledWith('🔧 SQL Merger');
+			// Logger methods should still be called - quiet mode affects what gets logged, not whether methods are called
+			expect(mockLoggerInstance.info).toHaveBeenCalledWith('🔧 SQL Merger');
+			expect(mockLoggerInstance.success).toHaveBeenCalledWith(
+				'Merge completed successfully',
+			);
 			expect(mockSqlMergerInstance.parseSqlFile).toHaveBeenCalled();
 			expect(mockSqlMergerInstance.mergeFiles).toHaveBeenCalled();
 		});
@@ -417,29 +446,6 @@ describe('CLI Interface', () => {
 	});
 
 	describe('Info Command', () => {
-		const mockSqlFiles: any[] = [
-			{
-				path: '/test/foo.sql',
-				content: 'CREATE TABLE foo (a INT);',
-				dependencies: [
-					{
-						tableName: 'foo',
-						dependsOn: [] as string[],
-					},
-				],
-			},
-			{
-				path: '/test/bar.sql',
-				content: 'CREATE TABLE bar (b INT, FOREIGN KEY (b) REFERENCES foo(a));',
-				dependencies: [
-					{
-						tableName: 'bar',
-						dependsOn: ['foo'] as string[],
-					},
-				],
-			},
-		];
-
 		it('should analyze dependencies successfully', async () => {
 			const options: InfoOptions = {
 				dialect: 'postgresql',
@@ -488,29 +494,6 @@ describe('CLI Interface', () => {
 	});
 
 	describe('Validate Command', () => {
-		const mockValidFiles: any[] = [
-			{
-				path: '/test/foo.sql',
-				content: 'CREATE TABLE foo (a INT);',
-				dependencies: [
-					{
-						tableName: 'foo',
-						dependsOn: [] as string[],
-					},
-				],
-			},
-			{
-				path: '/test/bar.sql',
-				content: 'CREATE TABLE bar (b INT, FOREIGN KEY (b) REFERENCES foo(a));',
-				dependencies: [
-					{
-						tableName: 'bar',
-						dependsOn: ['foo'] as string[],
-					},
-				],
-			},
-		];
-
 		it('should validate files successfully', async () => {
 			const options: ValidateOptions = {
 				dialect: 'postgresql',

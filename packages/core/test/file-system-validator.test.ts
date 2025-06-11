@@ -30,7 +30,9 @@ describe('FileSystemValidator', () => {
 
 	describe('validateInputDirectory', () => {
 		it('should validate existing directory successfully', () => {
-			expect(() => validator.validateInputDirectory('/valid/path')).not.toThrow();
+			expect(() =>
+				validator.validateInputDirectory('/valid/path'),
+			).not.toThrow();
 			expect(fs.existsSync).toHaveBeenCalledWith('/valid/path');
 			expect(fs.statSync).toHaveBeenCalledWith('/valid/path');
 		});
@@ -57,9 +59,9 @@ describe('FileSystemValidator', () => {
 				throw new Error('Permission denied');
 			});
 
-			expect(() => validator.validateInputDirectory('/unreadable/path')).toThrow(
-				'Cannot read input directory: Permission denied',
-			);
+			expect(() =>
+				validator.validateInputDirectory('/unreadable/path'),
+			).toThrow('Cannot read input directory: Permission denied');
 		});
 
 		it('should throw error for directories with no SQL files', () => {
@@ -77,18 +79,22 @@ describe('FileSystemValidator', () => {
 		it('should handle other readdirSync errors as validation failures', () => {
 			// Setup: Mock readdirSync to succeed on first call but fail on second call with withFileTypes
 			let callCount = 0;
-			(fs.readdirSync as any).mockImplementation((path: string, options?: any) => {
-				callCount++;
-				if (callCount === 1) {
-					// First call (permission check) - succeed
-					return ['file1.sql', 'file2.txt'];
-				} else {
-					// Second call with withFileTypes - throw error
-					throw new Error('Filesystem error during file listing');
-				}
-			});
+			(fs.readdirSync as any).mockImplementation(
+				(path: string, options?: any) => {
+					callCount++;
+					if (callCount === 1) {
+						// First call (permission check) - succeed
+						return ['file1.sql', 'file2.txt'];
+					} else {
+						// Second call with withFileTypes - throw error
+						throw new Error('Filesystem error during file listing');
+					}
+				},
+			);
 
-			expect(() => validator.validateInputDirectory('/invalid/fs/path')).toThrow(
+			expect(() =>
+				validator.validateInputDirectory('/invalid/fs/path'),
+			).toThrow(
 				'Cannot read input directory: Filesystem error during file listing',
 			);
 		});
@@ -121,4 +127,4 @@ describe('FileSystemValidator', () => {
 			// TODO: Implement test for validateDialect case sensitivity
 		});
 	});
-}); 
+});

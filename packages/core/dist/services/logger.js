@@ -1,15 +1,19 @@
 export class Logger {
-    #quiet;
-    #verbose;
+    #logLevel;
     constructor(options = {}) {
-        this.#quiet = options.quiet ?? false;
-        this.#verbose = options.verbose ?? false;
+        this.#logLevel = options.logLevel ?? 'info';
     }
+    #shouldLog = (messageLevel) => {
+        const levels = ['error', 'warn', 'info', 'debug'];
+        const currentLevelIndex = levels.indexOf(this.#logLevel);
+        const messageLevelIndex = levels.indexOf(messageLevel);
+        return messageLevelIndex <= currentLevelIndex;
+    };
     /**
-     * Log an error message (always shown unless quiet)
+     * Log an error message
      */
     error = (message, ...args) => {
-        if (!this.#quiet) {
+        if (this.#shouldLog('error')) {
             console.error(`❌ ${message}`, ...args);
         }
     };
@@ -17,71 +21,50 @@ export class Logger {
      * Log a warning message
      */
     warn = (message, ...args) => {
-        if (!this.#quiet) {
-            console.log(`⚠️  ${message}`, ...args);
+        if (this.#shouldLog('warn')) {
+            console.warn(`⚠️  ${message}`, ...args);
         }
     };
     /**
      * Log an info message
      */
     info = (message, ...args) => {
-        if (!this.#quiet) {
-            console.log(message, ...args);
+        if (this.#shouldLog('info')) {
+            console.info(message, ...args);
         }
     };
     /**
-     * Log a debug message (only in verbose mode)
+     * Log a debug message
      */
     debug = (message, ...args) => {
-        if (this.#verbose && !this.#quiet) {
-            console.log(`🐛 ${message}`, ...args);
+        if (this.#shouldLog('debug')) {
+            console.debug(`🐛 ${message}`, ...args);
         }
     };
     /**
      * Log a success message
      */
     success = (message, ...args) => {
-        if (!this.#quiet) {
-            console.log(`✅ ${message}`, ...args);
+        if (this.#shouldLog('info')) {
+            console.info(`✅ ${message}`, ...args);
         }
     };
     /**
      * Log a header/section separator
      */
     header = (title, separator = '=') => {
-        if (!this.#quiet) {
-            console.log(`\n${title}`);
-            console.log(separator.repeat(Math.max(50, title.length)));
+        if (this.#shouldLog('info')) {
+            console.info(`\n${title}`);
+            console.info(separator.repeat(Math.max(50, title.length)));
         }
     };
     /**
      * Log raw content without formatting
      */
     raw = (message, ...args) => {
-        if (!this.#quiet) {
-            console.log(message, ...args);
+        if (this.#shouldLog('info')) {
+            console.info(message, ...args);
         }
     };
-    /**
-     * Create a new logger instance with different options
-     */
-    withOptions = (options) => {
-        return new Logger({
-            quiet: options.quiet ?? this.#quiet,
-            verbose: options.verbose ?? this.#verbose,
-        });
-    };
-    /**
-     * Check if quiet mode is enabled
-     */
-    get isQuiet() {
-        return this.#quiet;
-    }
-    /**
-     * Check if verbose mode is enabled
-     */
-    get isVerbose() {
-        return this.#verbose;
-    }
 }
 //# sourceMappingURL=logger.js.map

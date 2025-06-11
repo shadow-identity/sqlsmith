@@ -44,10 +44,17 @@ export const executeMergeCommand = async (
 	inputPath: string,
 	options: MergeCommandOptions,
 ): Promise<void> => {
+	// Convert CLI flags to logLevel
+	let logLevel: 'error' | 'warn' | 'info' | 'debug' = 'info';
+	if (options.quiet) {
+		logLevel = 'error';
+	} else if (options.verbose) {
+		logLevel = 'debug';
+	}
+
 	const container = new ServiceContainer({
 		loggerOptions: {
-			quiet: options.quiet,
-			verbose: options.verbose,
+			logLevel,
 		},
 		allowReorderDropComments: options.allowReorderDropComments ?? false,
 	});

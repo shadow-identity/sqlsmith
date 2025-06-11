@@ -27,7 +27,7 @@ const VERSION = getVersion();
  * Handle command errors with consistent formatting
  */
 const handleCommandError = (error, quiet) => {
-    const logger = new Logger({ quiet });
+    const logger = new Logger({ logLevel: quiet ? 'error' : 'info' });
     const errorHandler = new ErrorHandler(logger);
     errorHandler.handleCommandError(error, quiet);
 };
@@ -102,7 +102,7 @@ export const main = async () => {
 // If this module is run directly, execute the CLI
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((error) => {
-        const logger = new Logger();
+        const logger = new Logger({ logLevel: 'info' });
         const errorHandler = new ErrorHandler(logger);
         errorHandler.handleCommandError(error);
     });

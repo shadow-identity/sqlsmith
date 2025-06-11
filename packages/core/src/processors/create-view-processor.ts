@@ -24,7 +24,8 @@ export class CreateViewProcessor implements StatementProcessor {
 
 		for (const statement of astStatements) {
 			if (this.canProcess(statement)) {
-				const viewName = statement.view?.view || statement.view?.table || statement.name;
+				const viewName =
+					statement.view?.view || statement.view?.table || statement.name;
 
 				if (viewName) {
 					const dependencies = this.#extractViewDependencies(statement);
@@ -74,8 +75,10 @@ export class CreateViewProcessor implements StatementProcessor {
 
 		// Handle different SELECT statement structures
 		if (selectStatement.from) {
-			const fromClauses = Array.isArray(selectStatement.from) ? selectStatement.from : [selectStatement.from];
-			
+			const fromClauses = Array.isArray(selectStatement.from)
+				? selectStatement.from
+				: [selectStatement.from];
+
 			for (const fromClause of fromClauses) {
 				if (fromClause.table) {
 					const tableName = fromClause.table;
@@ -88,8 +91,10 @@ export class CreateViewProcessor implements StatementProcessor {
 
 		// Handle JOINs
 		if (selectStatement.join) {
-			const joins = Array.isArray(selectStatement.join) ? selectStatement.join : [selectStatement.join];
-			
+			const joins = Array.isArray(selectStatement.join)
+				? selectStatement.join
+				: [selectStatement.join];
+
 			for (const join of joins) {
 				if (join.table) {
 					const tableName = join.table;
@@ -102,7 +107,9 @@ export class CreateViewProcessor implements StatementProcessor {
 
 		// Handle subqueries recursively
 		if (selectStatement.subquery) {
-			const subqueryTables = this.#extractTableReferencesFromSelect(selectStatement.subquery);
+			const subqueryTables = this.#extractTableReferencesFromSelect(
+				selectStatement.subquery,
+			);
 			tables.push(...subqueryTables);
 		}
 

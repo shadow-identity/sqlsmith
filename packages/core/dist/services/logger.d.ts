@@ -1,13 +1,12 @@
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 export type LoggerOptions = {
-    quiet?: boolean;
-    verbose?: boolean;
+    logLevel?: LogLevel;
 };
 export declare class Logger {
     #private;
     constructor(options?: LoggerOptions);
     /**
-     * Log an error message (always shown unless quiet)
+     * Log an error message
      */
     error: (message: string, ...args: unknown[]) => void;
     /**
@@ -19,7 +18,7 @@ export declare class Logger {
      */
     info: (message: string, ...args: unknown[]) => void;
     /**
-     * Log a debug message (only in verbose mode)
+     * Log a debug message
      */
     debug: (message: string, ...args: unknown[]) => void;
     /**
@@ -34,17 +33,5 @@ export declare class Logger {
      * Log raw content without formatting
      */
     raw: (message: string, ...args: unknown[]) => void;
-    /**
-     * Create a new logger instance with different options
-     */
-    withOptions: (options: LoggerOptions) => Logger;
-    /**
-     * Check if quiet mode is enabled
-     */
-    get isQuiet(): boolean;
-    /**
-     * Check if verbose mode is enabled
-     */
-    get isVerbose(): boolean;
 }
 //# sourceMappingURL=logger.d.ts.map

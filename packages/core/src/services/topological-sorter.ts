@@ -33,7 +33,9 @@ export class TopologicalSorter {
 		for (const node of graph.nodes) {
 			const dependencies = graph.edges.get(node) || new Set();
 			// Exclude self-references from in-degree calculation (hierarchical structures)
-			const nonSelfDependencies = Array.from(dependencies).filter(dep => dep !== node);
+			const nonSelfDependencies = Array.from(dependencies).filter(
+				(dep) => dep !== node,
+			);
 			inDegree.set(node, nonSelfDependencies.length);
 
 			// Add nodes with no dependencies to the queue
@@ -56,7 +58,7 @@ export class TopologicalSorter {
 				if (dependent === current) {
 					continue;
 				}
-				
+
 				const currentDegree = inDegree.get(dependent) || 0;
 				const newDegree = currentDegree - 1;
 				inDegree.set(dependent, newDegree);
@@ -129,7 +131,9 @@ export class TopologicalSorter {
 		sortedStatements.forEach((statement, index) => {
 			const fileName = statement.filePath.split('/').pop();
 			const type = statement.type.toUpperCase();
-			this.#logger.info(`${index + 1}. ${fileName} (${type}: ${statement.name})`);
+			this.#logger.info(
+				`${index + 1}. ${fileName} (${type}: ${statement.name})`,
+			);
 		});
 
 		this.#logger.raw('');

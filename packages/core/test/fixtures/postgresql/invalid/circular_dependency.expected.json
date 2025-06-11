@@ -1,5 +1,5 @@
 {
-  "errorType": "CIRCULAR_DEPENDENCY",
-  "exitCode": 3,
-  "messagePattern": "Circular dependencies detected: bar → foo → baz → bar"
-} 
+	"errorType": "CIRCULAR_DEPENDENCY",
+	"exitCode": 3,
+	"messagePattern": "Circular dependencies detected: bar → foo → baz → bar"
+}

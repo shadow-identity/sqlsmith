@@ -19,10 +19,17 @@ const validateDialect = (dialect) => {
  * Merge command implementation
  */
 export const executeMergeCommand = async (inputPath, options) => {
+    // Convert CLI flags to logLevel
+    let logLevel = 'info';
+    if (options.quiet) {
+        logLevel = 'error';
+    }
+    else if (options.verbose) {
+        logLevel = 'debug';
+    }
     const container = new ServiceContainer({
         loggerOptions: {
-            quiet: options.quiet,
-            verbose: options.verbose,
+            logLevel,
         },
         allowReorderDropComments: options.allowReorderDropComments ?? false,
     });

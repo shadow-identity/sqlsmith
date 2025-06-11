@@ -21,7 +21,7 @@ export class TopologicalSorter {
         for (const node of graph.nodes) {
             const dependencies = graph.edges.get(node) || new Set();
             // Exclude self-references from in-degree calculation (hierarchical structures)
-            const nonSelfDependencies = Array.from(dependencies).filter(dep => dep !== node);
+            const nonSelfDependencies = Array.from(dependencies).filter((dep) => dep !== node);
             inDegree.set(node, nonSelfDependencies.length);
             // Add nodes with no dependencies to the queue
             if (nonSelfDependencies.length === 0) {

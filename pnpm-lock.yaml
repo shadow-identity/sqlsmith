@@ -41,7 +41,7 @@ importers:
     dependencies:
       node-sql-parser:
         specifier: ^5.0.0
-        version: 5.3.9
+        version: 5.3.10
     devDependencies:
       '@types/node':
         specifier: ^20.10.0
@@ -567,8 +567,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  node-sql-parser@5.3.9:
-    resolution: {integrity: sha512-yJuCNCUWqS296krMKooLIJcZy+Q0OL6ZsNDxrwqj+HdGMHVT0ChPIFF1vqCexDe51VWKEwhU65OgvKyiyRcQLg==}
+  node-sql-parser@5.3.10:
+    resolution: {integrity: sha512-cf+iXXJ9Foz4hBIu+eNNeg207ac6XruA9I9DXEs+jCxeS9t/k9T0GZK8NZngPwkv+P26i3zNFj9jxJU2v3pJnw==}
     engines: {node: '>=8'}
 
   normalize-path@3.0.0:
@@ -1160,7 +1160,7 @@ snapshots:
 
   nanoid@3.3.11: {}
 
-  node-sql-parser@5.3.9:
+  node-sql-parser@5.3.10:
     dependencies:
       '@types/pegjs': 0.10.6
       big-integer: 1.6.52

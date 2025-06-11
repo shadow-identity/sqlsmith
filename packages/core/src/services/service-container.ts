@@ -15,12 +15,12 @@ import { TopologicalSorter } from './topological-sorter.js';
 export interface ServiceConfiguration {
 	// Logger configuration
 	loggerOptions?: LoggerOptions;
-	
+
 	// SQL processing configuration
 	enableViews?: boolean;
 	enableSequences?: boolean;
 	allowReorderDropComments?: boolean;
-	
+
 	// Default dialect
 	defaultDialect?: SqlDialect;
 }
@@ -54,7 +54,10 @@ export class ServiceContainer {
 	 * Get logger instance
 	 */
 	getLogger(): Logger {
-		return this.get('logger', () => new Logger(this.#configuration.loggerOptions));
+		return this.get(
+			'logger',
+			() => new Logger(this.#configuration.loggerOptions),
+		);
 	}
 
 	/**
@@ -75,14 +78,20 @@ export class ServiceContainer {
 	 * Get dependency analyzer instance
 	 */
 	getDependencyAnalyzer(): DependencyAnalyzer {
-		return this.get('dependencyAnalyzer', () => new DependencyAnalyzer(this.getLogger()));
+		return this.get(
+			'dependencyAnalyzer',
+			() => new DependencyAnalyzer(this.getLogger()),
+		);
 	}
 
 	/**
 	 * Get topological sorter instance
 	 */
 	getTopologicalSorter(): TopologicalSorter {
-		return this.get('topologicalSorter', () => new TopologicalSorter(this.getLogger()));
+		return this.get(
+			'topologicalSorter',
+			() => new TopologicalSorter(this.getLogger()),
+		);
 	}
 
 	/**
@@ -128,7 +137,7 @@ export class ServiceContainer {
 	 */
 	updateConfiguration(newConfiguration: Partial<ServiceConfiguration>): void {
 		this.#configuration = { ...this.#configuration, ...newConfiguration };
-		
+
 		// Clear services that depend on configuration
 		this.#services.delete('logger');
 		this.#services.delete('errorHandler');
@@ -156,4 +165,4 @@ export class ServiceContainer {
 	clone(): ServiceContainer {
 		return new ServiceContainer(this.#configuration);
 	}
-} 
+}

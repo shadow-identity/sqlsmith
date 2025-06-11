@@ -92,11 +92,13 @@ export class DependencyError extends SqlMergerError {
         super(message, code, context, originalError);
     }
     static circularDependency(cycles) {
-        const cycleDescriptions = cycles.map(cycle => cycle.join(' → ')).join(', ');
+        const cycleDescriptions = cycles
+            .map((cycle) => cycle.join(' → '))
+            .join(', ');
         return new DependencyError(`Circular dependencies detected: ${cycleDescriptions}`, ErrorCode.CIRCULAR_DEPENDENCY, { cycles, cycleDescriptions });
     }
     static duplicateStatementNames(duplicates) {
-        const duplicateNames = duplicates.map(d => d.name).join(', ');
+        const duplicateNames = duplicates.map((d) => d.name).join(', ');
         return new DependencyError(`Duplicate statement names found: ${duplicateNames}`, ErrorCode.DUPLICATE_STATEMENT_NAMES, { duplicates, duplicateNames });
     }
     static missingDependency(statementName, dependencyName) {

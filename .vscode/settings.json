@@ -2,5 +2,9 @@
 	"editor.codeActionsOnSave": {
 		"source.fixAll.biome": "explicit",
 		"source.action.organizeImports": "explicit"
-	}
+	},
+	"cSpell.words": [
+		"Sqlsmith"
+	],
+	"editor.defaultFormatter": "biomejs.biome"
 }

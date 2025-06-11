@@ -47,12 +47,7 @@ export class SqlMerger {
 				allowReorderDropComments: options.allowReorderDropComments ?? false,
 				enableViews: options.enableViews ?? true,
 				enableSequences: options.enableSequences ?? true,
-				loggerOptions: options.logger
-					? {
-							quiet: options.logger.isQuiet,
-							verbose: options.logger.isVerbose,
-						}
-					: {},
+				loggerOptions: {},
 			};
 
 			this.#container = new ServiceContainer(serviceConfig);

@@ -1,12 +1,12 @@
 import { ErrorCode, SqlMergerError } from '../types/errors.js';
-import type { Logger } from './logger.js';
+import { Logger } from './logger.js';
 export declare class ErrorHandler {
     #private;
     constructor(logger: Logger);
     /**
      * Handle an error with appropriate logging and optional re-throwing
      */
-    handleError(error: unknown, shouldRethrow?: boolean): never | void;
+    handleError(error: unknown, shouldRethrow?: boolean): never | undefined;
     /**
      * Wrap a function with error handling
      */

@@ -24,9 +24,10 @@ export class CreateSequenceProcessor implements StatementProcessor {
 
 		for (const statement of astStatements) {
 			if (this.canProcess(statement)) {
-				const sequenceName = statement.sequence?.[0]?.table || 
-								   statement.sequence?.table || 
-								   statement.name;
+				const sequenceName =
+					statement.sequence?.[0]?.table ||
+					statement.sequence?.table ||
+					statement.name;
 
 				if (sequenceName) {
 					// Sequences typically have no dependencies - they're usually created first

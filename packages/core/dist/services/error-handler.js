@@ -1,4 +1,5 @@
 import { ErrorCode, SqlMergerError } from '../types/errors.js';
+import { Logger } from './logger.js';
 export class ErrorHandler {
     #logger;
     constructor(logger) {
@@ -10,15 +11,13 @@ export class ErrorHandler {
     handleError(error, shouldRethrow = true) {
         if (error instanceof SqlMergerError) {
             this.#logger.error(error.getDetailedMessage());
-            if (this.#logger.isVerbose && error.originalError) {
+            if (error.originalError) {
                 this.#logger.debug('Original error stack:', error.originalError.stack);
             }
         }
         else if (error instanceof Error) {
             this.#logger.error(`Unexpected error: ${error.message}`);
-            if (this.#logger.isVerbose) {
-                this.#logger.debug('Error stack:', error.stack);
-            }
+            this.#logger.debug('Error stack:', error.stack);
         }
         else {
             this.#logger.error(`Unknown error: ${String(error)}`);
@@ -81,7 +80,7 @@ export class ErrorHandler {
     handleCommandError(error, quiet = false) {
         // Don't log if already logged by handleError
         if (!(error instanceof SqlMergerError)) {
-            const tempLogger = this.#logger.withOptions({ quiet });
+            const tempLogger = new Logger({ logLevel: quiet ? 'error' : 'info' });
             tempLogger.error(error instanceof Error ? error.message : String(error));
         }
         // Exit with appropriate code based on error type

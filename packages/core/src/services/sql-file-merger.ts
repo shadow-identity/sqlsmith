@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs';
+import { writeFileSync } from 'node:fs';
 import type { SqlFile, SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
 

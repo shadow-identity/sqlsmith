@@ -15,7 +15,7 @@ export const executeInfoCommand = async (
 ): Promise<void> => {
 	const container = new ServiceContainer({
 		loggerOptions: {
-			quiet: options.quiet,
+			logLevel: options.quiet ? 'error' : 'info',
 		},
 	});
 

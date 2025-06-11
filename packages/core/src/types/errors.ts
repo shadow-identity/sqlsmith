@@ -4,26 +4,26 @@ export enum ErrorCode {
 	FILE_NOT_FOUND = 'FILE_NOT_FOUND',
 	NO_SQL_FILES = 'NO_SQL_FILES',
 	INVALID_OUTPUT_PATH = 'INVALID_OUTPUT_PATH',
-	
+
 	// Parsing errors
 	INVALID_SQL_SYNTAX = 'INVALID_SQL_SYNTAX',
 	UNSUPPORTED_DIALECT = 'UNSUPPORTED_DIALECT',
 	PARSING_FAILED = 'PARSING_FAILED',
-	
+
 	// Dependency errors
 	CIRCULAR_DEPENDENCY = 'CIRCULAR_DEPENDENCY',
 	DUPLICATE_STATEMENT_NAMES = 'DUPLICATE_STATEMENT_NAMES',
 	MISSING_DEPENDENCY = 'MISSING_DEPENDENCY',
 	INVALID_STATEMENT_ORDER = 'INVALID_STATEMENT_ORDER',
-	
+
 	// Configuration errors
 	INVALID_OPTIONS = 'INVALID_OPTIONS',
 	MISSING_REQUIRED_OPTION = 'MISSING_REQUIRED_OPTION',
-	
+
 	// Processing errors
 	PROCESSOR_ERROR = 'PROCESSOR_ERROR',
 	MERGE_FAILED = 'MERGE_FAILED',
-	
+
 	// General errors
 	INTERNAL_ERROR = 'INTERNAL_ERROR',
 	VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -57,18 +57,18 @@ export abstract class SqlMergerError extends Error {
 	 */
 	getDetailedMessage(): string {
 		let message = `[${this.code}] ${this.message}`;
-		
+
 		if (this.context && Object.keys(this.context).length > 0) {
 			const contextStr = Object.entries(this.context)
 				.map(([key, value]) => `${key}: ${value}`)
 				.join(', ');
 			message += ` (${contextStr})`;
 		}
-		
+
 		if (this.originalError) {
 			message += `\nCaused by: ${this.originalError.message}`;
 		}
-		
+
 		return message;
 	}
 }
@@ -126,7 +126,11 @@ export class ParsingError extends SqlMergerError {
 		super(message, code, context, originalError);
 	}
 
-	static invalidSqlSyntax(filePath: string, lineNumber?: number, originalError?: Error): ParsingError {
+	static invalidSqlSyntax(
+		filePath: string,
+		lineNumber?: number,
+		originalError?: Error,
+	): ParsingError {
 		return new ParsingError(
 			`Invalid SQL syntax in file: ${filePath}${lineNumber ? ` at line ${lineNumber}` : ''}`,
 			ErrorCode.INVALID_SQL_SYNTAX,
@@ -164,7 +168,9 @@ export class DependencyError extends SqlMergerError {
 	}
 
 	static circularDependency(cycles: string[][]): DependencyError {
-		const cycleDescriptions = cycles.map(cycle => cycle.join(' → ')).join(', ');
+		const cycleDescriptions = cycles
+			.map((cycle) => cycle.join(' → '))
+			.join(', ');
 		return new DependencyError(
 			`Circular dependencies detected: ${cycleDescriptions}`,
 			ErrorCode.CIRCULAR_DEPENDENCY,
@@ -172,8 +178,10 @@ export class DependencyError extends SqlMergerError {
 		);
 	}
 
-	static duplicateStatementNames(duplicates: Array<{ name: string; files: string[] }>): DependencyError {
-		const duplicateNames = duplicates.map(d => d.name).join(', ');
+	static duplicateStatementNames(
+		duplicates: Array<{ name: string; files: string[] }>,
+	): DependencyError {
+		const duplicateNames = duplicates.map((d) => d.name).join(', ');
 		return new DependencyError(
 			`Duplicate statement names found: ${duplicateNames}`,
 			ErrorCode.DUPLICATE_STATEMENT_NAMES,
@@ -181,7 +189,10 @@ export class DependencyError extends SqlMergerError {
 		);
 	}
 
-	static missingDependency(statementName: string, dependencyName: string): DependencyError {
+	static missingDependency(
+		statementName: string,
+		dependencyName: string,
+	): DependencyError {
 		return new DependencyError(
 			`Statement '${statementName}' depends on '${dependencyName}' which was not found`,
 			ErrorCode.MISSING_DEPENDENCY,
@@ -189,7 +200,10 @@ export class DependencyError extends SqlMergerError {
 		);
 	}
 
-	static invalidStatementOrder(fileName: string, details: string): DependencyError {
+	static invalidStatementOrder(
+		fileName: string,
+		details: string,
+	): DependencyError {
 		return new DependencyError(
 			`Invalid statement order in file '${fileName}': ${details}`,
 			ErrorCode.INVALID_STATEMENT_ORDER,
@@ -208,7 +222,10 @@ export class ConfigurationError extends SqlMergerError {
 		super(message, code, context, originalError);
 	}
 
-	static invalidOptions(optionName: string, value: unknown): ConfigurationError {
+	static invalidOptions(
+		optionName: string,
+		value: unknown,
+	): ConfigurationError {
 		return new ConfigurationError(
 			`Invalid option '${optionName}': ${value}`,
 			ErrorCode.INVALID_OPTIONS,
@@ -235,7 +252,10 @@ export class ProcessingError extends SqlMergerError {
 		super(message, code, context, originalError);
 	}
 
-	static processorError(processorName: string, originalError?: Error): ProcessingError {
+	static processorError(
+		processorName: string,
+		originalError?: Error,
+	): ProcessingError {
 		return new ProcessingError(
 			`Error in processor '${processorName}'`,
 			ErrorCode.PROCESSOR_ERROR,
@@ -252,4 +272,4 @@ export class ProcessingError extends SqlMergerError {
 			originalError,
 		);
 	}
-} 
+}

@@ -6,7 +6,7 @@ import { resolve } from 'path';
 export const executeInfoCommand = async (inputPath, options) => {
     const container = new ServiceContainer({
         loggerOptions: {
-            quiet: options.quiet,
+            logLevel: options.quiet ? 'error' : 'info',
         },
     });
     const logger = container.getLogger();

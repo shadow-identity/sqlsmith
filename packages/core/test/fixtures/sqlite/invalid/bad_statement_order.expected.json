@@ -1,5 +1,5 @@
 {
-  "errorType": "INVALID_STATEMENT_ORDER",
-  "exitCode": 1,
-  "messagePattern": "Invalid statement order in file.*Statement 'cities' at position 0 depends on 'countries' which appears later in the file at position 1"
-} 
+	"errorType": "INVALID_STATEMENT_ORDER",
+	"exitCode": 1,
+	"messagePattern": "Invalid statement order in file.*Statement 'cities' at position 0 depends on 'countries' which appears later in the file at position 1"
+}
