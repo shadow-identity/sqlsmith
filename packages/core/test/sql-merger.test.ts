@@ -401,10 +401,6 @@ describe('SqlMerger', () => {
 								readFileSync(expectedJsonPath, 'utf-8'),
 							);
 
-							expect(() =>
-								merger.parseSqlFiles(scenarioPath, dialect),
-							).toThrow();
-
 							try {
 								merger.parseSqlFiles(scenarioPath, dialect);
 								expect.fail(`Expected ${scenario} to throw an error`);

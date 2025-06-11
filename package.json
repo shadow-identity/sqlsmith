@@ -1,12 +1,12 @@
 {
 	"name": "sqlsmith-workspace",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "SQLsmith monorepo - SQL schema merging tools",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"build": "pnpm -r build",
-		"test": "pnpm -r test",
+		"test": "pnpm build && pnpm -r test",
 		"clean": "pnpm -r exec rm -rf dist",
 		"dev:cli": "pnpm --filter @sqlsmith/cli dev",
 		"dev:core": "pnpm --filter @sqlsmith/core test:watch",
