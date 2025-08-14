@@ -124,6 +124,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace (ensure deps built)
+        run: pnpm -r build
+
       - name: Build CLI package
         run: pnpm --filter @sqlsmith/cli build
 
@@ -154,6 +157,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace (ensure deps built)
+        run: pnpm -r build
+
       - name: Build vite-plugin package
         run: pnpm --filter @sqlsmith/vite-plugin build
 
@@ -166,6 +172,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [detect-changes, publish-core, publish-cli, publish-vite-plugin]
     if: always() && (needs.publish-core.result == 'success' || needs.publish-cli.result == 'success' || needs.publish-vite-plugin.result == 'success')
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout code
