@@ -39,12 +39,12 @@ export class DependencyAnalyzer {
 				const depName = dependency.name;
 				graph.nodes.add(depName);
 
-				graph.edges.get(statement.name)!.add(depName);
+				graph.edges.get(statement.name)?.add(depName);
 
 				if (!graph.reversedEdges.has(depName)) {
 					graph.reversedEdges.set(depName, new Set());
 				}
-				graph.reversedEdges.get(depName)!.add(statement.name);
+				graph.reversedEdges.get(depName)?.add(statement.name);
 			}
 		}
 
@@ -196,7 +196,10 @@ export class DependencyAnalyzer {
 				statement.filePath.split('/').pop() || statement.filePath;
 
 			if (nameToFile.has(name)) {
-				const existingFile = nameToFile.get(name)!;
+				const existingFile = nameToFile.get(name);
+				if (!existingFile) {
+					continue;
+				}
 				const existing = duplicates.find((d) => d.name === name);
 
 				if (existing) {

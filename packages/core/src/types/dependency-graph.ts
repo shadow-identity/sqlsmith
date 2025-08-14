@@ -6,6 +6,6 @@ export interface DependencyGraph<T = string> {
 
 export interface GraphNode {
 	id: string;
-	data: any;
+	data: unknown;
 	dependencies: string[];
 }

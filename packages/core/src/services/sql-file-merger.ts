@@ -59,7 +59,7 @@ export class SqlFileMerger {
 			if (!statementsByFile.has(statement.filePath)) {
 				statementsByFile.set(statement.filePath, []);
 			}
-			statementsByFile.get(statement.filePath)!.push(statement);
+			statementsByFile.get(statement.filePath)?.push(statement);
 		}
 
 		// Process each file's statements in topological order

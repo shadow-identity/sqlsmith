@@ -1,7 +1,3 @@
-import pkg from 'node-sql-parser';
-
-const { Parser } = pkg;
-
 import type { DependencyAnalyzer } from './services/dependency-analyzer.js';
 import type { ErrorHandler } from './services/error-handler.js';
 import type { Logger } from './services/logger.js';
@@ -76,7 +72,6 @@ export class SqlMerger {
 	parseSqlFiles(
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
-		options: SqlMergerOptions = {},
 	): SqlFile[] {
 		return this.#errorHandler.wrapWithErrorHandling(() => {
 			this.#logger.info(`🔍 Parsing SQL files from: ${directoryPath}`);
@@ -146,7 +141,6 @@ export class SqlMerger {
 	parseSingleFile(
 		filePath: string,
 		dialect: SqlDialect = 'postgresql',
-		options: SqlMergerOptions = {},
 	): SqlFile {
 		return this.#errorHandler.wrapWithErrorHandling(() => {
 			return this.#fileParser.parseFile(filePath, dialect);

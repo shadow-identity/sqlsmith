@@ -1,6 +1,6 @@
 {
 	"name": "sqlsmith-workspace",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "SQLsmith monorepo - SQL schema merging tools",
 	"private": true,
 	"type": "module",
@@ -38,7 +38,7 @@
 		"node": ">=20.0.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.0.0-beta.6",
+		"@biomejs/biome": "2.2.0",
 		"@types/node": "^24.0.0",
 		"typescript": "^5.8.3"
 	},

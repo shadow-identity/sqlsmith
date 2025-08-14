@@ -74,15 +74,6 @@ export abstract class SqlMergerError extends Error {
 }
 
 export class FileSystemError extends SqlMergerError {
-	constructor(
-		message: string,
-		code: ErrorCode,
-		context?: Record<string, unknown>,
-		originalError?: Error,
-	) {
-		super(message, code, context, originalError);
-	}
-
 	static directoryNotFound(path: string): FileSystemError {
 		return new FileSystemError(
 			`Directory not found: ${path}`,
@@ -117,15 +108,6 @@ export class FileSystemError extends SqlMergerError {
 }
 
 export class ParsingError extends SqlMergerError {
-	constructor(
-		message: string,
-		code: ErrorCode,
-		context?: Record<string, unknown>,
-		originalError?: Error,
-	) {
-		super(message, code, context, originalError);
-	}
-
 	static invalidSqlSyntax(
 		filePath: string,
 		lineNumber?: number,
@@ -158,15 +140,6 @@ export class ParsingError extends SqlMergerError {
 }
 
 export class DependencyError extends SqlMergerError {
-	constructor(
-		message: string,
-		code: ErrorCode,
-		context?: Record<string, unknown>,
-		originalError?: Error,
-	) {
-		super(message, code, context, originalError);
-	}
-
 	static circularDependency(cycles: string[][]): DependencyError {
 		const cycleDescriptions = cycles
 			.map((cycle) => cycle.join(' → '))
@@ -218,15 +191,6 @@ export class DependencyError extends SqlMergerError {
 }
 
 export class ConfigurationError extends SqlMergerError {
-	constructor(
-		message: string,
-		code: ErrorCode,
-		context?: Record<string, unknown>,
-		originalError?: Error,
-	) {
-		super(message, code, context, originalError);
-	}
-
 	static invalidOptions(
 		optionName: string,
 		value: unknown,
@@ -248,15 +212,6 @@ export class ConfigurationError extends SqlMergerError {
 }
 
 export class ProcessingError extends SqlMergerError {
-	constructor(
-		message: string,
-		code: ErrorCode,
-		context?: Record<string, unknown>,
-		originalError?: Error,
-	) {
-		super(message, code, context, originalError);
-	}
-
 	static processorError(
 		processorName: string,
 		originalError?: Error,

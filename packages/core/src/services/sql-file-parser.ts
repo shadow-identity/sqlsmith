@@ -81,7 +81,10 @@ export class SqlFileParser {
 				};
 			}
 
-			const parseResult = this.parseContent(content, filePath, dialect);
+			// Normalize SQL to avoid unsupported constructs in the underlying parser
+			const normalized = this.#normalizeSqlForParser(content, dialect);
+
+			const parseResult = this.parseContent(normalized, filePath, dialect);
 
 			// Update statement content with the original file content
 			// This is a simplified approach - in reality we'd need to track line ranges
@@ -116,17 +119,14 @@ export class SqlFileParser {
 
 			// Try each processor on the AST
 			for (const processor of this.#processors) {
-				const processorStatements = processor.extractStatements(
-					ast,
-					filePath,
-					dialect,
-				);
+				const processorStatements = processor.extractStatements(ast, filePath);
 				statements.push(...processorStatements);
 			}
 
 			return { ast, statements };
-		} catch (error: any) {
-			throw new Error(`Failed to parse SQL content: ${error.message}`);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Failed to parse SQL content: ${message}`);
 		}
 	}
 
@@ -143,5 +143,32 @@ export class SqlFileParser {
 		}
 
 		return Array.from(types);
+	}
+
+	/**
+	 * Normalize SQL content to increase compatibility with the underlying parser
+	 * without affecting dependency analysis semantics.
+	 *
+	 * Currently handles:
+	 * - PostgreSQL IDENTITY columns: `GENERATED ALWAYS/BY DEFAULT AS IDENTITY [(...)]`
+	 *   These do not impact foreign-key dependencies, so they can be safely removed
+	 *   prior to parsing.
+	 *
+	 * FIXME: Remove this workaround once node-sql-parser releases support for
+	 * PostgreSQL IDENTITY columns (tracked upstream in
+	 * https://github.com/taozhi8833998/node-sql-parser/issues/2518, milestone 5.3.12).
+	 */
+	#normalizeSqlForParser(sql: string, dialect: SqlDialect): string {
+		let result = sql;
+
+		if (dialect === 'postgresql') {
+			// Remove IDENTITY column clauses which node-sql-parser may not support yet
+			// e.g., "GENERATED ALWAYS AS IDENTITY", optionally with options in parentheses
+			const identityRegex =
+				/\bGENERATED\s+(ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(\s*\([^)]*\))?/gi;
+			result = result.replace(identityRegex, '').replace(/\s+,/g, ',');
+		}
+
+		return result;
 	}
 }

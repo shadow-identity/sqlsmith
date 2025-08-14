@@ -1,5 +1,5 @@
 import type { AST } from 'node-sql-parser';
-import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
+import type { SqlStatement } from '../types/sql-statement.js';
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateSequenceProcessor implements StatementProcessor {
@@ -7,31 +7,29 @@ export class CreateSequenceProcessor implements StatementProcessor {
 		return ['sequence'];
 	}
 
+	#isCreateSequence = (node: AST): boolean => {
+		if (typeof node !== 'object' || node === null) return false;
+		const record = node as unknown as Record<string, unknown>;
+		return record.type === 'create' && record.keyword === 'sequence';
+	};
+
 	canProcess(statement: AST): boolean {
-		// TODO: The 'keyword' property on the Create type from node-sql-parser
-		// doesn't seem to include 'sequence'. Using 'any' for now.
-		return (
-			statement?.type === 'create' && (statement as any)?.keyword === 'sequence'
-		);
+		return this.#isCreateSequence(statement);
 	}
 
 	/**
 	 * Extracts sequence statements from the given AST.
 	 */
-	extractStatements(
-		ast: AST | AST[],
-		filePath: string,
-		_dialect: SqlDialect,
-	): SqlStatement[] {
+	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[] {
 		const statements: SqlStatement[] = [];
 		const astArray = Array.isArray(ast) ? ast : [ast];
 
 		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				// TODO: The Create type from node-sql-parser doesn't have a clear
-				// property for the sequence name. Using 'any' for now based on
-				// previous implementation.
-				const sequenceName = (statement as any).sequence?.[0]?.table;
+				const record = statement as unknown as Record<string, unknown>;
+				const sequenceName = Array.isArray(record.sequence)
+					? (record.sequence as Array<{ table?: string }>).at(0)?.table
+					: undefined;
 
 				if (sequenceName) {
 					statements.push({

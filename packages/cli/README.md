@@ -15,7 +15,7 @@ npx @sqlsmith/cli
 ## Usage
 
 ```bash
-# Merge SQL files
+# Merge SQL files (to stdout by default)
 sqlsmith ./schemas --output merged.sql
 
 # Analyze dependencies

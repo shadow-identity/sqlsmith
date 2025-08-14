@@ -24,7 +24,6 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 				return 'error';
 			case 'verbose':
 				return 'debug';
-			case 'normal':
 			default:
 				return 'info';
 		}

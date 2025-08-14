@@ -50,6 +50,21 @@ Main class for SQL merging operations.
 - `CreateSequenceProcessor` - Handles CREATE SEQUENCE statements  
 - `CreateViewProcessor` - Handles CREATE VIEW statements
 
+#### Processor interface
+
+```ts
+import type { AST } from 'node-sql-parser'
+import type { SqlStatement } from './types/sql-statement'
+
+export interface StatementProcessor {
+  getHandledTypes(): string[]
+  canProcess(statement: AST): boolean
+  extractStatements(ast: AST | AST[], filePath: string): SqlStatement[]
+}
+```
+
+Note: pre-release change — the `extractStatements` method no longer receives a `dialect` parameter. If you need dialect-specific behavior in a custom processor, pass it via the constructor or configuration when creating the processor.
+
 ### Services
 
 - `DependencyAnalyzer` - Analyzes statement dependencies

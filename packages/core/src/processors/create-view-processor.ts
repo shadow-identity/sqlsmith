@@ -1,9 +1,5 @@
 import type { AST, Create as CreateView, Select } from 'node-sql-parser';
-import type {
-	Dependency,
-	SqlDialect,
-	SqlStatement,
-} from '../types/sql-statement.js';
+import type { Dependency, SqlStatement } from '../types/sql-statement.js';
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateViewProcessor implements StatementProcessor {
@@ -18,19 +14,13 @@ export class CreateViewProcessor implements StatementProcessor {
 	/**
 	 * Extracts view statements from the given AST.
 	 */
-	extractStatements(
-		ast: AST | AST[],
-		filePath: string,
-		dialect: SqlDialect,
-	): SqlStatement[] {
+	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[] {
 		const statements: SqlStatement[] = [];
 		const astArray = Array.isArray(ast) ? ast : [ast];
 
 		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				// TODO: The Create type from node-sql-parser doesn't have a 'view'
-				// property. Using 'any' for now.
-				const viewName = (statement as any).view;
+				const viewName = this.#extractViewName(statement);
 
 				if (viewName) {
 					const dependencies = this.#extractViewDependencies(
@@ -54,9 +44,7 @@ export class CreateViewProcessor implements StatementProcessor {
 	#extractViewDependencies(statement: CreateView): Dependency[] {
 		const dependencies: Dependency[] = [];
 
-		// TODO: The Create type from node-sql-parser doesn't have a 'definition'
-		// property for views. Using 'any' for now.
-		const definition = (statement as any).definition;
+		const definition = this.#extractViewDefinition(statement);
 		if (definition) {
 			const selectStatement = definition as Select;
 			const tables = this.#extractTableReferencesFromSelect(selectStatement);
@@ -71,6 +59,32 @@ export class CreateViewProcessor implements StatementProcessor {
 
 		return dependencies;
 	}
+
+	#isCreateNode = (node: AST): boolean => {
+		return (
+			typeof node === 'object' &&
+			node !== null &&
+			'type' in node &&
+			(node as { type?: unknown }).type === 'create'
+		);
+	};
+
+	#extractViewName = (node: AST): string | undefined => {
+		if (!this.#isCreateNode(node)) return undefined;
+		// Some parsers store view name at node.view, others under table[0].table
+		const asRecord = node as unknown as Record<string, unknown>;
+		const direct =
+			typeof asRecord.view === 'string' ? (asRecord.view as string) : undefined;
+		if (direct) return direct;
+		const tableArr = asRecord.table as Array<{ table?: string }> | undefined;
+		return tableArr?.at(0)?.table;
+	};
+
+	#extractViewDefinition = (node: AST): unknown => {
+		if (!this.#isCreateNode(node)) return undefined;
+		const asRecord = node as unknown as Record<string, unknown>;
+		return asRecord.definition;
+	};
 
 	#extractTableReferencesFromSelect(selectStatement: Select): string[] {
 		const tables: string[] = [];

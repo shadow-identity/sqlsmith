@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
 	ErrorHandler,
 	FileSystemValidator,
@@ -66,7 +67,11 @@ export const prepareContext = <
 
 // Read version from package.json
 export const getVersion = (): string => {
-	const packageJsonPath = resolve(__dirname, '../package.json');
+	const moduleDirname =
+		typeof __dirname !== 'undefined'
+			? __dirname
+			: dirname(fileURLToPath(import.meta.url));
+	const packageJsonPath = resolve(moduleDirname, '../package.json');
 
 	try {
 		const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));

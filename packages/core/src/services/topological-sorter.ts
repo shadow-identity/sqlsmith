@@ -48,7 +48,10 @@ export class TopologicalSorter {
 
 		// Process the queue
 		while (queue.length > 0) {
-			const current = queue.shift()!;
+			const current = queue.shift();
+			if (current === undefined) {
+				break;
+			}
 			sortedNames.push(current);
 
 			// Update in-degree for all dependents

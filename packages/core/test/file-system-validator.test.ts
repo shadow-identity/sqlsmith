@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSystemValidator } from '../src/services/file-system-validator.js';
 
@@ -80,7 +80,7 @@ describe('FileSystemValidator', () => {
 			// Setup: Mock readdirSync to succeed on first call but fail on second call with withFileTypes
 			let callCount = 0;
 			(fs.readdirSync as any).mockImplementation(
-				(path: string, options?: any) => {
+				(_path: string, _options?: any) => {
 					callCount++;
 					if (callCount === 1) {
 						// First call (permission check) - succeed

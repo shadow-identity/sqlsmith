@@ -1,9 +1,5 @@
 import type { AST, Create as CreateTable } from 'node-sql-parser';
-import type {
-	Dependency,
-	SqlDialect,
-	SqlStatement,
-} from '../types/sql-statement.js';
+import type { Dependency, SqlStatement } from '../types/sql-statement.js';
 import type { StatementProcessor } from './base-processor.js';
 
 export class CreateTableProcessor implements StatementProcessor {
@@ -15,11 +11,7 @@ export class CreateTableProcessor implements StatementProcessor {
 		return ['table'];
 	}
 
-	extractStatements(
-		ast: AST | AST[],
-		filePath: string,
-		dialect: SqlDialect,
-	): SqlStatement[] {
+	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[] {
 		const statements: SqlStatement[] = [];
 
 		const astArray = Array.isArray(ast) ? ast : [ast];

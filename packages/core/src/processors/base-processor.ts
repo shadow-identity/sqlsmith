@@ -1,5 +1,5 @@
 import type { AST } from 'node-sql-parser';
-import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
+import type { SqlStatement } from '../types/sql-statement.js';
 
 export interface StatementProcessor {
 	getHandledTypes(): string[];
@@ -12,9 +12,5 @@ export interface StatementProcessor {
 	/**
 	 * Extract all statements from the given AST
 	 */
-	extractStatements(
-		ast: AST | AST[],
-		filePath: string,
-		dialect: SqlDialect,
-	): SqlStatement[];
+	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[];
 }

@@ -4,8 +4,8 @@ import {
 	readFileSync,
 	statSync,
 	unlinkSync,
-} from 'fs';
-import { resolve } from 'path';
+} from 'node:fs';
+import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Logger } from '../src/services/logger.js';
 import { ServiceContainer } from '../src/services/service-container.js';
