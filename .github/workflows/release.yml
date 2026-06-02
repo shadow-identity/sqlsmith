@@ -6,6 +6,18 @@ on:
     paths:
       - 'packages/*/package.json'
       - 'package.json'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - core
+          - cli
+          - vite-plugin
 
 jobs:
   detect-changes:
@@ -23,6 +35,28 @@ jobs:
       - name: Check for package.json changes
         id: changes
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PACKAGE="${{ github.event.inputs.package }}"
+            if [ "$PACKAGE" = "all" ] || [ "$PACKAGE" = "core" ]; then
+              echo "core=true" >> $GITHUB_OUTPUT
+            else
+              echo "core=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [ "$PACKAGE" = "all" ] || [ "$PACKAGE" = "cli" ]; then
+              echo "cli=true" >> $GITHUB_OUTPUT
+            else
+              echo "cli=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [ "$PACKAGE" = "all" ] || [ "$PACKAGE" = "vite-plugin" ]; then
+              echo "vite-plugin=true" >> $GITHUB_OUTPUT
+            else
+              echo "vite-plugin=false" >> $GITHUB_OUTPUT
+            fi
+            exit 0
+          fi
+
           if git diff HEAD~1 HEAD --name-only | grep -q "packages/core/package.json"; then
             echo "core=true" >> $GITHUB_OUTPUT
           else
@@ -75,7 +109,10 @@ jobs:
   publish-core:
     runs-on: ubuntu-latest  
     needs: [detect-changes, test-and-build]
-    if: needs.detect-changes.outputs.core-changed == 'true'
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.core-changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
     
     steps:
       - name: Checkout code
@@ -97,15 +134,19 @@ jobs:
       - name: Build core package
         run: pnpm --filter @sqlsmith/core build
 
+      - name: Pack core package
+        run: pnpm --filter @sqlsmith/core pack --pack-destination /tmp
+
       - name: Publish core package
-        run: pnpm --filter @sqlsmith/core publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "/tmp/sqlsmith-core-$(node -p "require('./packages/core/package.json').version").tgz" --access public
 
   publish-cli:
     runs-on: ubuntu-latest
     needs: [detect-changes, test-and-build, publish-core]
-    if: always() && needs.detect-changes.outputs.cli-changed == 'true' && (needs.publish-core.result == 'success' || needs.publish-core.result == 'skipped')
+    if: always() && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.cli-changed == 'true' && (needs.publish-core.result == 'success' || needs.publish-core.result == 'skipped')
+    permissions:
+      contents: read
+      id-token: write
     
     steps:
       - name: Checkout code
@@ -130,15 +171,19 @@ jobs:
       - name: Build CLI package
         run: pnpm --filter @sqlsmith/cli build
 
+      - name: Pack CLI package
+        run: pnpm --filter @sqlsmith/cli pack --pack-destination /tmp
+
       - name: Publish CLI package
-        run: pnpm --filter @sqlsmith/cli publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "/tmp/sqlsmith-cli-$(node -p "require('./packages/cli/package.json').version").tgz" --access public
 
   publish-vite-plugin:
     runs-on: ubuntu-latest
     needs: [detect-changes, test-and-build, publish-core]
-    if: always() && needs.detect-changes.outputs.vite-plugin-changed == 'true' && (needs.publish-core.result == 'success' || needs.publish-core.result == 'skipped')
+    if: always() && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.vite-plugin-changed == 'true' && (needs.publish-core.result == 'success' || needs.publish-core.result == 'skipped')
+    permissions:
+      contents: read
+      id-token: write
     
     steps:
       - name: Checkout code
@@ -163,10 +208,11 @@ jobs:
       - name: Build vite-plugin package
         run: pnpm --filter @sqlsmith/vite-plugin build
 
+      - name: Pack vite-plugin package
+        run: pnpm --filter @sqlsmith/vite-plugin pack --pack-destination /tmp
+
       - name: Publish vite-plugin package
-        run: pnpm --filter @sqlsmith/vite-plugin publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "/tmp/sqlsmith-vite-plugin-$(node -p "require('./packages/vite-plugin/package.json').version").tgz" --access public
 
   create-release:
     runs-on: ubuntu-latest
