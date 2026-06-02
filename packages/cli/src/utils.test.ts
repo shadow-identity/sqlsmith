@@ -56,10 +56,11 @@ describe('handleCommandError', () => {
 	beforeEach(() => {
 		mockedLogger.mockClear();
 		mockHandleCommandError.mockClear();
-		// @ts-expect-error This is a mock implementation for a class with private fields.
-		mockedErrorHandler.mockImplementation(() => ({
-			handleCommandError: mockHandleCommandError,
-		}));
+		mockedErrorHandler.mockImplementation(
+			class {
+				handleCommandError = mockHandleCommandError;
+			} as any,
+		);
 	});
 
 	it('should call ErrorHandler.handleCommandError', () => {
@@ -96,11 +97,13 @@ describe('prepareContext', () => {
 		mockValidateInputDirectory.mockClear();
 		mockValidateOutputDirectory.mockClear();
 		mockValidateDialect.mockClear();
-		mockedFileSystemValidator.mockImplementation(() => ({
-			validateInputDirectory: mockValidateInputDirectory,
-			validateOutputDirectory: mockValidateOutputDirectory,
-			validateDialect: mockValidateDialect,
-		}));
+		mockedFileSystemValidator.mockImplementation(
+			class {
+				validateInputDirectory = mockValidateInputDirectory;
+				validateOutputDirectory = mockValidateOutputDirectory;
+				validateDialect = mockValidateDialect;
+			} as any,
+		);
 		mockedResolve.mockImplementation((...paths) => paths.join('/'));
 	});
 

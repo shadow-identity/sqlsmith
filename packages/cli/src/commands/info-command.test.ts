@@ -52,7 +52,12 @@ describe('executeInfoCommand', () => {
 		vi.resetAllMocks();
 
 		// Setup default mock implementations
-		MockedServiceContainer.mockImplementation(() => mockContainer as any);
+		MockedServiceContainer.mockImplementation(
+			class {
+				getLogger = mockContainer.getLogger;
+				getFileSystemValidator = mockContainer.getFileSystemValidator;
+			} as any,
+		);
 		MockedSqlMerger.withContainer.mockReturnValue(mockMerger as any);
 		mockedResolve.mockImplementation((path: string) => `/resolved/${path}`);
 
@@ -83,7 +88,9 @@ describe('executeInfoCommand', () => {
 			expect(mockedResolve).toHaveBeenCalledWith(inputPath);
 
 			// Verify merger creation and analysis
-			expect(MockedSqlMerger.withContainer).toHaveBeenCalledWith(mockContainer);
+			expect(MockedSqlMerger.withContainer).toHaveBeenCalledWith(
+				MockedServiceContainer.mock.instances[0],
+			);
 			expect(mockMerger.analyzeDependencies).toHaveBeenCalledWith(
 				'/resolved/./test-directory',
 				'postgresql',
@@ -95,10 +102,16 @@ describe('executeInfoCommand', () => {
 		it('should execute operations in the correct order', async () => {
 			const callOrder: string[] = [];
 
-			MockedServiceContainer.mockImplementation(() => {
-				callOrder.push('ServiceContainer');
-				return mockContainer as any;
-			});
+			MockedServiceContainer.mockImplementation(
+				class {
+					constructor() {
+						callOrder.push('ServiceContainer');
+					}
+
+					getLogger = mockContainer.getLogger;
+					getFileSystemValidator = mockContainer.getFileSystemValidator;
+				} as any,
+			);
 
 			mockContainer.getFileSystemValidator.mockImplementation(() => {
 				callOrder.push('getFileSystemValidator');

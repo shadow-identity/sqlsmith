@@ -1,6 +1,6 @@
 {
 	"name": "@sqlsmith/vite-plugin",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "Vite plugin for SQLsmith - automatic SQL schema merging during development",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -46,13 +46,12 @@
 		"vite": "^4.0.0 || ^5.0.0"
 	},
 	"dependencies": {
-		"@sqlsmith/core": "workspace:*",
-		"chokidar": "^3.5.3"
+		"@sqlsmith/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^24.0.0",
-		"rollup": "^4.43.0",
+		"rollup": "^4.61.0",
 		"typescript": "^5.8.3",
-		"vite": "^6.3.5"
+		"vite": "^6.4.3"
 	}
 }

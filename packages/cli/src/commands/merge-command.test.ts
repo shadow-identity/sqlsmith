@@ -52,7 +52,11 @@ describe('executeMergeCommand', () => {
 		vi.resetAllMocks();
 
 		// Setup default mock implementations
-		MockedServiceContainer.mockImplementation(() => mockContainer as any);
+		MockedServiceContainer.mockImplementation(
+			class {
+				getLogger = mockContainer.getLogger;
+			} as any,
+		);
 		MockedSqlMerger.withContainer.mockReturnValue(mockMerger as any);
 		mockedResolve.mockImplementation((path: string) => `/resolved/${path}`);
 
@@ -80,7 +84,9 @@ describe('executeMergeCommand', () => {
 			expect(mockedResolve).toHaveBeenCalledWith(inputPath);
 
 			// Verify merger creation and calls
-			expect(MockedSqlMerger.withContainer).toHaveBeenCalledWith(mockContainer);
+			expect(MockedSqlMerger.withContainer).toHaveBeenCalledWith(
+				MockedServiceContainer.mock.instances[0],
+			);
 			expect(mockMerger.parseSqlFiles).toHaveBeenCalledWith(
 				'/resolved/./test-directory',
 				'postgresql',
@@ -138,10 +144,15 @@ describe('executeMergeCommand', () => {
 			const callOrder: string[] = [];
 			const mockSqlFiles = [{ id: 'file1' }];
 
-			MockedServiceContainer.mockImplementation(() => {
-				callOrder.push('ServiceContainer');
-				return mockContainer as any;
-			});
+			MockedServiceContainer.mockImplementation(
+				class {
+					constructor() {
+						callOrder.push('ServiceContainer');
+					}
+
+					getLogger = mockContainer.getLogger;
+				} as any,
+			);
 
 			mockContainer.getLogger.mockImplementation(() => {
 				callOrder.push('getLogger');

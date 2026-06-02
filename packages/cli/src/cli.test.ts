@@ -66,13 +66,24 @@ describe('CLI', () => {
 			parseAsync: vi.fn().mockResolvedValue(undefined),
 		};
 
-		MockedCommand.mockReturnValue(programMock);
+		MockedCommand.mockImplementation(
+			class {
+				name = programMock.name;
+				description = programMock.description;
+				version = programMock.version;
+				argument = programMock.argument;
+				option = programMock.option;
+				addOption = programMock.addOption;
+				action = programMock.action;
+				command = programMock.command;
+				parseAsync = programMock.parseAsync;
+			} as any,
+		);
 		MockedOption.mockImplementation(
-			() =>
-				({
-					choices: vi.fn().mockReturnThis(),
-					default: vi.fn().mockReturnThis(),
-				}) as any,
+			class {
+				choices = vi.fn().mockReturnThis();
+				default = vi.fn().mockReturnThis();
+			} as any,
 		);
 
 		// Call createProgram to set up the commands and capture the actions
@@ -94,10 +105,9 @@ describe('CLI', () => {
 		mockExecuteInfoCommand.mockResolvedValue(undefined);
 		mockExecuteValidateCommand.mockResolvedValue(undefined);
 		MockedErrorHandler.mockImplementation(
-			() =>
-				({
-					handleCommandError: vi.fn(),
-				}) as any,
+			class {
+				handleCommandError = vi.fn();
+			} as any,
 		);
 	});
 
