@@ -28,7 +28,7 @@ jobs:
       vite-plugin-changed: ${{ steps.changes.outputs.vite-plugin }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -82,13 +82,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -116,13 +116,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -150,13 +150,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -187,13 +187,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -223,13 +223,13 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm  
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -246,17 +246,26 @@ jobs:
           echo "vite=$VITE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.version.outputs.core }}
-          release_name: Release v${{ steps.version.outputs.core }}
-          body: |
-            ## Published Packages
-            
-            - @sqlsmith/core@${{ steps.version.outputs.core }}
-            - @sqlsmith/cli@${{ steps.version.outputs.cli }}  
-            - @sqlsmith/vite-plugin@${{ steps.version.outputs.vite }}
-          draft: false
-          prerelease: false 
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.core }}"
+          RELEASE_NOTES="release-notes.md"
+
+          cat > "$RELEASE_NOTES" <<EOF
+          ## Published Packages
+
+          - @sqlsmith/core@${{ steps.version.outputs.core }}
+          - @sqlsmith/cli@${{ steps.version.outputs.cli }}
+          - @sqlsmith/vite-plugin@${{ steps.version.outputs.vite }}
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "Release $TAG" \
+              --notes-file "$RELEASE_NOTES"
+          else
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes-file "$RELEASE_NOTES"
+          fi
