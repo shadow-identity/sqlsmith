@@ -1,4 +1,3 @@
-import { writeFileSync } from 'node:fs';
 import type { SqlFile, SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
 
@@ -6,7 +5,6 @@ export interface MergeOptions {
 	addComments?: boolean;
 	separateStatements?: boolean;
 	includeHeader?: boolean;
-	outputPath?: string;
 }
 
 export class SqlFileMerger {
@@ -27,7 +25,6 @@ export class SqlFileMerger {
 			addComments = true,
 			separateStatements = true,
 			includeHeader = true,
-			outputPath,
 		} = options;
 
 		if (statements.length === 0) {
@@ -118,22 +115,7 @@ export class SqlFileMerger {
 
 		const mergedContent = parts.join('\n');
 
-		// Handle output
-		if (outputPath) {
-			// Write to file
-			try {
-				writeFileSync(outputPath, mergedContent, 'utf-8');
-				this.#logger.info(`📁 Output written to: ${outputPath}`);
-			} catch (error) {
-				throw new Error(`Failed to write output file ${outputPath}: ${error}`);
-			}
-		} else {
-			// Default to stdout when no output path is specified
-			process.stdout.write(mergedContent);
-			this.#logger.info('📤 Output written to stdout (default)');
-		}
-
-		this.#logMergeResults(statements, mergedContent, outputPath);
+		this.#logMergeResults(statements, mergedContent);
 
 		return mergedContent;
 	}
@@ -153,11 +135,7 @@ export class SqlFileMerger {
 		return this.mergeStatements(allStatements, options);
 	}
 
-	#logMergeResults(
-		statements: SqlStatement[],
-		content: string,
-		outputPath?: string,
-	): void {
+	#logMergeResults(statements: SqlStatement[], content: string): void {
 		const uniqueFiles = new Set(statements.map((s) => s.filePath));
 
 		this.#logger.header('📄 SQL Merge Complete', '-');
@@ -165,12 +143,6 @@ export class SqlFileMerger {
 		this.#logger.info(`📋 Statements merged: ${statements.length}`);
 		this.#logger.info(`📝 Total lines: ${content.split('\n').length}`);
 		this.#logger.info(`📊 Characters: ${content.length}`);
-
-		if (outputPath) {
-			this.#logger.info(`💾 Saved to: ${outputPath}`);
-		} else {
-			this.#logger.info(`📤 Output: stdout (default)`);
-		}
 
 		this.#logger.success('Merge successful!');
 		this.#logger.raw('');

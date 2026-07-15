@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-	ErrorHandler,
+	ErrorCode,
 	FileSystemValidator,
 	Logger,
 	type LogLevel,
+	SqlMergerError,
 } from '@sqlsmith/core';
 
 /**
@@ -22,15 +23,42 @@ export const validateLogLevel = (value: string): LogLevel => {
 };
 
 /**
- * Handle command errors with consistent formatting
+ * Handle command errors and terminate the process with an exit code that
+ * reflects the error category: 2 — input/file errors, 3 — dependency errors,
+ * 4 — configuration errors, 1 — anything else.
  */
 export const handleCommandError = (
 	error: unknown,
 	logLevel: LogLevel,
-): void => {
-	const logger = new Logger({ logLevel });
-	const errorHandler = new ErrorHandler(logger);
-	errorHandler.handleCommandError(error);
+): never => {
+	// SqlMergerError instances are already logged by the core error handler.
+	if (!(error instanceof SqlMergerError)) {
+		const logger = new Logger({ logLevel });
+		logger.error(error instanceof Error ? error.message : String(error));
+	}
+
+	let exitCode = 1;
+	if (error instanceof SqlMergerError) {
+		switch (error.code) {
+			case ErrorCode.DIRECTORY_NOT_FOUND:
+			case ErrorCode.FILE_NOT_FOUND:
+			case ErrorCode.NO_SQL_FILES:
+				exitCode = 2;
+				break;
+			case ErrorCode.CIRCULAR_DEPENDENCY:
+			case ErrorCode.DUPLICATE_STATEMENT_NAMES:
+				exitCode = 3;
+				break;
+			case ErrorCode.INVALID_OPTIONS:
+			case ErrorCode.MISSING_REQUIRED_OPTION:
+				exitCode = 4;
+				break;
+			default:
+				exitCode = 1;
+		}
+	}
+
+	process.exit(exitCode);
 };
 
 /**

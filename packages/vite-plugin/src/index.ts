@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Logger, SqlMerger } from '@sqlsmith/core';
 import type { PluginContext } from 'rollup';
@@ -115,12 +115,13 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 				options.dialect || 'postgresql',
 			);
 
-			merger.mergeFiles(parsedFiles, {
+			const merged = merger.mergeFiles(parsedFiles, {
 				addComments: true,
 				includeHeader: true,
 				separateStatements: true,
-				outputPath: options.output,
 			});
+
+			writeFileSync(resolve(options.output), merged, 'utf-8');
 
 			if (!isErrorOnly && !isSilent) {
 				logger.success(`SQLsmith: Schema updated -> ${options.output}`);

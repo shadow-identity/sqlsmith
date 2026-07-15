@@ -1,412 +1,227 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Logger, type LogLevel } from './logger.js';
 
+/**
+ * Logger contract: every message is written to the STDERR stream, stdout is
+ * never touched. Stdout belongs to program output (merged SQL), so that
+ * `sqlsmith <dir> > out.sql` produces a clean SQL file.
+ */
 describe('Logger', () => {
-	let consoleMocks: {
-		error: any;
-		warn: any;
-		info: any;
-		debug: any;
-	};
+	let stderrSpy: ReturnType<typeof vi.spyOn>;
+	let stdoutSpy: ReturnType<typeof vi.spyOn>;
+
+	const stderrText = (): string =>
+		stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('');
 
 	beforeEach(() => {
-		// Mock all console methods
-		consoleMocks = {
-			error: vi.spyOn(console, 'error').mockImplementation(() => {}),
-			warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
-			info: vi.spyOn(console, 'info').mockImplementation(() => {}),
-			debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
-		};
+		stderrSpy = vi
+			.spyOn(process.stderr, 'write')
+			.mockImplementation(() => true);
+		stdoutSpy = vi
+			.spyOn(process.stdout, 'write')
+			.mockImplementation(() => true);
 	});
 
 	afterEach(() => {
-		// Restore all mocks
 		vi.restoreAllMocks();
 	});
 
-	describe('Constructor', () => {
-		it('should create logger with default options', () => {
-			const logger = new Logger();
-			expect(logger).toBeInstanceOf(Logger);
-		});
-
-		it('should create logger with custom log level', () => {
+	describe('output channel', () => {
+		it('never writes to stdout, whatever the method or level', () => {
 			const logger = new Logger({ logLevel: 'debug' });
-			expect(logger).toBeInstanceOf(Logger);
+
+			logger.error('e');
+			logger.warn('w');
+			logger.info('i');
+			logger.debug('d');
+			logger.success('s');
+			logger.header('h');
+			logger.raw('r');
+
+			expect(stdoutSpy).not.toHaveBeenCalled();
 		});
 
-		it('should create logger with empty options', () => {
-			const logger = new Logger({});
-			expect(logger).toBeInstanceOf(Logger);
+		it('writes every enabled message to stderr', () => {
+			const logger = new Logger({ logLevel: 'debug' });
+
+			logger.error('an error');
+			logger.warn('a warning');
+			logger.info('an info');
+			logger.debug('a debug');
+			logger.success('a success');
+			logger.header('a header');
+			logger.raw('a raw');
+
+			const output = stderrText();
+			for (const message of [
+				'an error',
+				'a warning',
+				'an info',
+				'a debug',
+				'a success',
+				'a header',
+				'a raw',
+			]) {
+				expect(output).toContain(message);
+			}
+		});
+
+		it('terminates each message with a newline', () => {
+			const logger = new Logger({ logLevel: 'info' });
+
+			logger.info('first');
+			logger.error('second');
+
+			for (const call of stderrSpy.mock.calls) {
+				expect(String(call[0])).toMatch(/\n$/);
+			}
 		});
 	});
 
-	describe('Log level hierarchy', () => {
-		const testCases = [
+	describe('log level hierarchy', () => {
+		const testCases: Array<{
+			logLevel: LogLevel;
+			enabled: string[];
+			disabled: string[];
+		}> = [
 			{
-				logLevel: 'error' as LogLevel,
-				shouldLog: {
-					error: true,
-					warn: false,
-					info: false,
-					debug: false,
-					success: false,
-					header: false,
-					raw: false,
-				},
+				logLevel: 'error',
+				enabled: ['error'],
+				disabled: ['warn', 'info', 'debug', 'success', 'header', 'raw'],
 			},
 			{
-				logLevel: 'warn' as LogLevel,
-				shouldLog: {
-					error: true,
-					warn: true,
-					info: false,
-					debug: false,
-					success: false,
-					header: false,
-					raw: false,
-				},
+				logLevel: 'warn',
+				enabled: ['error', 'warn'],
+				disabled: ['info', 'debug', 'success', 'header', 'raw'],
 			},
 			{
-				logLevel: 'info' as LogLevel,
-				shouldLog: {
-					error: true,
-					warn: true,
-					info: true,
-					debug: false,
-					success: true,
-					header: true,
-					raw: true,
-				},
+				logLevel: 'info',
+				enabled: ['error', 'warn', 'info', 'success', 'header', 'raw'],
+				disabled: ['debug'],
 			},
 			{
-				logLevel: 'debug' as LogLevel,
-				shouldLog: {
-					error: true,
-					warn: true,
-					info: true,
-					debug: true,
-					success: true,
-					header: true,
-					raw: true,
-				},
+				logLevel: 'debug',
+				enabled: ['error', 'warn', 'info', 'debug', 'success', 'header', 'raw'],
+				disabled: [],
 			},
 		];
 
-		testCases.forEach(({ logLevel, shouldLog }) => {
-			describe(`logLevel: ${logLevel}`, () => {
-				let logger: Logger;
-
-				beforeEach(() => {
-					logger = new Logger({ logLevel });
-				});
-
-				it(`should ${shouldLog.error ? '' : 'NOT '}log error messages`, () => {
-					logger.error('test error');
-					if (shouldLog.error) {
-						expect(consoleMocks.error).toHaveBeenCalledWith('❌ test error');
-					} else {
-						expect(consoleMocks.error).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.warn ? '' : 'NOT '}log warn messages`, () => {
-					logger.warn('test warning');
-					if (shouldLog.warn) {
-						expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  test warning');
-					} else {
-						expect(consoleMocks.warn).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.info ? '' : 'NOT '}log info messages`, () => {
-					logger.info('test info');
-					if (shouldLog.info) {
-						expect(consoleMocks.info).toHaveBeenCalledWith('test info');
-					} else {
-						expect(consoleMocks.info).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.debug ? '' : 'NOT '}log debug messages`, () => {
-					logger.debug('test debug');
-					if (shouldLog.debug) {
-						expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 test debug');
-					} else {
-						expect(consoleMocks.debug).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.success ? '' : 'NOT '}log success messages`, () => {
-					logger.success('test success');
-					if (shouldLog.success) {
-						expect(consoleMocks.info).toHaveBeenCalledWith('✅ test success');
-					} else {
-						expect(consoleMocks.info).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.header ? '' : 'NOT '}log header messages`, () => {
-					logger.header('Test Header');
-					if (shouldLog.header) {
-						expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-						expect(consoleMocks.info).toHaveBeenNthCalledWith(
-							1,
-							'\nTest Header',
-						);
-						expect(consoleMocks.info).toHaveBeenNthCalledWith(
-							2,
-							'='.repeat(50),
-						);
-					} else {
-						expect(consoleMocks.info).not.toHaveBeenCalled();
-					}
-				});
-
-				it(`should ${shouldLog.raw ? '' : 'NOT '}log raw messages`, () => {
-					logger.raw('test raw');
-					if (shouldLog.raw) {
-						expect(consoleMocks.info).toHaveBeenCalledWith('test raw');
-					} else {
-						expect(consoleMocks.info).not.toHaveBeenCalled();
-					}
-				});
-			});
-		});
-	});
-
-	describe('Logging methods with arguments', () => {
-		let logger: Logger;
-
-		beforeEach(() => {
-			logger = new Logger({ logLevel: 'debug' }); // Enable all logging
-		});
-
-		it('should pass multiple arguments to console.error', () => {
-			logger.error('test error', 'extra', 'args', { object: true });
-			expect(consoleMocks.error).toHaveBeenCalledWith(
-				'❌ test error',
-				'extra',
-				'args',
-				{ object: true },
-			);
-		});
-
-		it('should pass multiple arguments to console.warn', () => {
-			logger.warn('test warning', 123, null);
-			expect(consoleMocks.warn).toHaveBeenCalledWith(
-				'⚠️  test warning',
-				123,
-				null,
-			);
-		});
-
-		it('should pass multiple arguments to console.info', () => {
-			logger.info('test info', [1, 2, 3]);
-			expect(consoleMocks.info).toHaveBeenCalledWith('test info', [1, 2, 3]);
-		});
-
-		it('should pass multiple arguments to console.debug', () => {
-			logger.debug('test debug', { nested: { data: 'value' } });
-			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 test debug', {
-				nested: { data: 'value' },
-			});
-		});
-
-		it('should pass multiple arguments to success method', () => {
-			logger.success('test success', 'more', 'data');
-			expect(consoleMocks.info).toHaveBeenCalledWith(
-				'✅ test success',
-				'more',
-				'data',
-			);
-		});
-
-		it('should pass multiple arguments to raw method', () => {
-			logger.raw('raw message', 'arg1', 'arg2');
-			expect(consoleMocks.info).toHaveBeenCalledWith(
-				'raw message',
-				'arg1',
-				'arg2',
-			);
-		});
-	});
-
-	describe('Header method variations', () => {
-		let logger: Logger;
-
-		beforeEach(() => {
-			logger = new Logger({ logLevel: 'info' });
-		});
-
-		it('should use default separator for header', () => {
-			logger.header('Test Header');
-			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, '\nTest Header');
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '='.repeat(50));
-		});
-
-		it('should use custom separator for header', () => {
-			logger.header('Short', '-');
-			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, '\nShort');
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '-'.repeat(50));
-		});
-
-		it('should adapt separator length to title length when title is longer than 50 chars', () => {
-			const longTitle =
-				'This is a very long title that exceeds 50 characters for testing purposes';
-			logger.header(longTitle);
-			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, `\n${longTitle}`);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(
-				2,
-				'='.repeat(longTitle.length),
-			);
-		});
-
-		it('should use minimum 50 character separator for short titles', () => {
-			logger.header('Hi', '*');
-			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, '\nHi');
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '*'.repeat(50));
-		});
-	});
-
-	describe('Console method mapping', () => {
-		let logger: Logger;
-
-		beforeEach(() => {
-			logger = new Logger({ logLevel: 'debug' });
-		});
-
-		it('should use console.error for error method', () => {
-			logger.error('error test');
-			expect(consoleMocks.error).toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.info).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-
-		it('should use console.warn for warn method', () => {
-			logger.warn('warn test');
-			expect(consoleMocks.warn).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.info).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-
-		it('should use console.info for info method', () => {
-			logger.info('info test');
-			expect(consoleMocks.info).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-
-		it('should use console.debug for debug method', () => {
-			logger.debug('debug test');
-			expect(consoleMocks.debug).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.info).not.toHaveBeenCalled();
-		});
-
-		it('should use console.info for success method', () => {
-			logger.success('success test');
-			expect(consoleMocks.info).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-
-		it('should use console.info for header method', () => {
-			logger.header('header test');
-			expect(consoleMocks.info).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-
-		it('should use console.info for raw method', () => {
-			logger.raw('raw test');
-			expect(consoleMocks.info).toHaveBeenCalled();
-			expect(consoleMocks.error).not.toHaveBeenCalled();
-			expect(consoleMocks.warn).not.toHaveBeenCalled();
-			expect(consoleMocks.debug).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('Edge cases', () => {
-		let logger: Logger;
-
-		beforeEach(() => {
-			logger = new Logger({ logLevel: 'debug' });
-		});
-
-		it('should handle empty string messages', () => {
-			logger.error('');
-			logger.warn('');
-			logger.info('');
-			logger.debug('');
-
-			expect(consoleMocks.error).toHaveBeenCalledWith('❌ ');
-			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  ');
-			expect(consoleMocks.info).toHaveBeenCalledWith('');
-			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 ');
-		});
-
-		it('should handle undefined and null arguments', () => {
-			expect(() => {
-				logger.error('test', undefined, null);
-				logger.warn('test', undefined);
-				logger.info('test', null);
-				logger.debug('test', undefined, null);
-			}).not.toThrow();
-
-			expect(consoleMocks.error).toHaveBeenCalledWith(
-				'❌ test',
-				undefined,
-				null,
-			);
-			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  test', undefined);
-			expect(consoleMocks.info).toHaveBeenCalledWith('test', null);
-			expect(consoleMocks.debug).toHaveBeenCalledWith(
-				'🐛 test',
-				undefined,
-				null,
-			);
-		});
-
-		it('should handle complex objects', () => {
-			const complexObject = {
-				array: [1, 2, 3],
-				nested: { deep: 'value' },
-				func: () => 'test',
-				date: new Date('2023-01-01'),
+		const invoke = (logger: Logger, method: string, message: string): void => {
+			const methods: Record<string, (message: string) => void> = {
+				error: logger.error,
+				warn: logger.warn,
+				info: logger.info,
+				debug: logger.debug,
+				success: logger.success,
+				header: (title) => logger.header(title),
+				raw: logger.raw,
 			};
+			const fn = methods[method];
+			if (!fn) {
+				throw new Error(`Unknown method: ${method}`);
+			}
+			fn(message);
+		};
 
-			logger.info('Complex:', complexObject);
-			expect(consoleMocks.info).toHaveBeenCalledWith('Complex:', complexObject);
+		testCases.forEach(({ logLevel, enabled, disabled }) => {
+			describe(`logLevel: ${logLevel}`, () => {
+				enabled.forEach((method) => {
+					it(`logs ${method} messages`, () => {
+						const logger = new Logger({ logLevel });
+						invoke(logger, method, `${method} probe`);
+						expect(stderrText()).toContain(`${method} probe`);
+					});
+				});
+
+				disabled.forEach((method) => {
+					it(`does NOT log ${method} messages`, () => {
+						const logger = new Logger({ logLevel });
+						invoke(logger, method, `${method} probe`);
+						expect(stderrText()).not.toContain(`${method} probe`);
+					});
+				});
+			});
 		});
 
-		it('should handle no arguments after message', () => {
-			logger.error('solo error');
-			logger.warn('solo warn');
-			logger.info('solo info');
-			logger.debug('solo debug');
+		it('defaults to info level', () => {
+			const logger = new Logger();
+			logger.debug('hidden');
+			logger.info('visible');
 
-			expect(consoleMocks.error).toHaveBeenCalledWith('❌ solo error');
-			expect(consoleMocks.warn).toHaveBeenCalledWith('⚠️  solo warn');
-			expect(consoleMocks.info).toHaveBeenCalledWith('solo info');
-			expect(consoleMocks.debug).toHaveBeenCalledWith('🐛 solo debug');
+			expect(stderrText()).toContain('visible');
+			expect(stderrText()).not.toContain('hidden');
+		});
+	});
+
+	describe('formatting', () => {
+		let logger: Logger;
+
+		beforeEach(() => {
+			logger = new Logger({ logLevel: 'debug' });
 		});
 
-		it('should handle empty header title', () => {
-			logger.header('');
-			expect(consoleMocks.info).toHaveBeenCalledTimes(2);
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(1, '\n');
-			expect(consoleMocks.info).toHaveBeenNthCalledWith(2, '='.repeat(50));
+		it('prefixes error messages with ❌', () => {
+			logger.error('boom');
+			expect(stderrText()).toContain('❌ boom');
+		});
+
+		it('prefixes warn messages with ⚠️', () => {
+			logger.warn('careful');
+			expect(stderrText()).toContain('⚠️  careful');
+		});
+
+		it('prefixes debug messages with 🐛', () => {
+			logger.debug('details');
+			expect(stderrText()).toContain('🐛 details');
+		});
+
+		it('prefixes success messages with ✅', () => {
+			logger.success('done');
+			expect(stderrText()).toContain('✅ done');
+		});
+
+		it('does not prefix info and raw messages', () => {
+			logger.info('plain info');
+			logger.raw('plain raw');
+
+			expect(stderrText()).toContain('plain info');
+			expect(stderrText()).toContain('plain raw');
+			for (const prefix of ['❌', '⚠️', '🐛', '✅']) {
+				expect(stderrText()).not.toContain(`${prefix} plain`);
+			}
+		});
+
+		it('renders a header with a separator of at least 50 characters', () => {
+			logger.header('Test Header');
+			expect(stderrText()).toContain('Test Header');
+			expect(stderrText()).toContain('='.repeat(50));
+		});
+
+		it('adapts the separator length to titles longer than 50 characters', () => {
+			const longTitle =
+				'This is a very long title that exceeds fifty characters for testing';
+			logger.header(longTitle);
+			expect(stderrText()).toContain('='.repeat(longTitle.length));
+		});
+
+		it('supports a custom header separator', () => {
+			logger.header('Short', '-');
+			expect(stderrText()).toContain('-'.repeat(50));
+		});
+
+		it('formats additional arguments into the message', () => {
+			logger.info('with args', 42, 'extra');
+			logger.error('with object', { object: true });
+
+			expect(stderrText()).toContain('with args 42 extra');
+			expect(stderrText()).toContain('{ object: true }');
+		});
+
+		it('handles undefined and null arguments without throwing', () => {
+			expect(() => {
+				logger.info('test', undefined, null);
+				logger.error('test', undefined, null);
+			}).not.toThrow();
 		});
 	});
 });

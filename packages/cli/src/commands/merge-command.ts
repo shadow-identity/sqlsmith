@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LogLevel } from '@sqlsmith/core';
 import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
@@ -10,7 +11,8 @@ export type MergeCommandOptions = {
 };
 
 /**
- * Merge command implementation
+ * Merge command implementation. The core merger computes the merged SQL;
+ * this command delivers it — to the output file or to stdout.
  */
 export const executeMergeCommand = async (
 	inputPath: string,
@@ -33,12 +35,24 @@ export const executeMergeCommand = async (
 
 	const sqlFiles = merger.parseSqlFiles(resolvedInput, options.dialect);
 
-	merger.mergeFiles(sqlFiles, {
+	const merged = merger.mergeFiles(sqlFiles, {
 		addComments: true,
 		includeHeader: true,
 		separateStatements: true,
-		outputPath: options.output,
 	});
+
+	if (options.output) {
+		try {
+			writeFileSync(options.output, merged, 'utf-8');
+			logger.info(`💾 Output written to: ${options.output}`);
+		} catch (error) {
+			throw new Error(
+				`Failed to write output file ${options.output}: ${error}`,
+			);
+		}
+	} else {
+		process.stdout.write(merged.endsWith('\n') ? merged : `${merged}\n`);
+	}
 
 	logger.success('Merge completed successfully');
 };

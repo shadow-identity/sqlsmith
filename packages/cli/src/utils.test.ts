@@ -1,18 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-	ErrorHandler,
-	FileSystemValidator,
-	Logger,
-	type LogLevel,
-} from '@sqlsmith/core';
+import { FileSystemValidator, type LogLevel } from '@sqlsmith/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	getVersion,
-	handleCommandError,
-	prepareContext,
-	validateLogLevel,
-} from './utils';
+import { getVersion, prepareContext, validateLogLevel } from './utils';
 
 vi.mock('node:fs');
 vi.mock('node:path');
@@ -21,16 +11,12 @@ vi.mock('@sqlsmith/core', async () => {
 		await vi.importActual<typeof import('@sqlsmith/core')>('@sqlsmith/core');
 	return {
 		...original,
-		Logger: vi.fn(),
-		ErrorHandler: vi.fn(),
 		FileSystemValidator: vi.fn(),
 	};
 });
 
 const mockedReadFileSync = vi.mocked(readFileSync);
 const mockedResolve = vi.mocked(resolve);
-const mockedLogger = vi.mocked(Logger);
-const mockedErrorHandler = vi.mocked(ErrorHandler);
 const mockedFileSystemValidator = vi.mocked(FileSystemValidator);
 
 describe('validateLogLevel', () => {
@@ -48,45 +34,8 @@ describe('validateLogLevel', () => {
 	});
 });
 
-describe('handleCommandError', () => {
-	const mockHandleCommandError = vi.fn((_error?: unknown): never => {
-		throw new Error('mocked handleCommandError');
-	});
-
-	beforeEach(() => {
-		mockedLogger.mockClear();
-		mockHandleCommandError.mockClear();
-		mockedErrorHandler.mockImplementation(
-			class {
-				handleCommandError = mockHandleCommandError;
-			} as any,
-		);
-	});
-
-	it('should call ErrorHandler.handleCommandError', () => {
-		const error = new Error('test error');
-		expect(() => handleCommandError(error, 'info')).toThrow(
-			'mocked handleCommandError',
-		);
-		expect(mockedLogger).toHaveBeenCalledWith({ logLevel: 'info' });
-		expect(mockedErrorHandler).toHaveBeenCalledWith(
-			mockedLogger.mock.instances[0],
-		);
-		expect(mockHandleCommandError).toHaveBeenCalledWith(error);
-	});
-
-	it('should call ErrorHandler.handleCommandError for "error" logLevel', () => {
-		const error = new Error('test error');
-		expect(() => handleCommandError(error, 'error')).toThrow(
-			'mocked handleCommandError',
-		);
-		expect(mockedLogger).toHaveBeenCalledWith({ logLevel: 'error' });
-		expect(mockedErrorHandler).toHaveBeenCalledWith(
-			mockedLogger.mock.instances[0],
-		);
-		expect(mockHandleCommandError).toHaveBeenCalledWith(error);
-	});
-});
+// The exit-code contract of handleCommandError is covered by
+// utils.exit-codes.test.ts against the real implementation.
 
 describe('prepareContext', () => {
 	const mockValidateInputDirectory = vi.fn();

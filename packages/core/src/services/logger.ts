@@ -1,9 +1,15 @@
+import { format } from 'node:util';
+
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 export type LoggerOptions = {
 	logLevel?: LogLevel;
 };
 
+/**
+ * All log output goes to stderr: stdout is reserved for program output
+ * (merged SQL), so piping the CLI produces a clean SQL file.
+ */
 export class Logger {
 	#logLevel: LogLevel;
 
@@ -18,12 +24,16 @@ export class Logger {
 		return messageLevelIndex <= currentLevelIndex;
 	};
 
+	#write = (message: string, ...args: unknown[]): void => {
+		process.stderr.write(`${format(message, ...args)}\n`);
+	};
+
 	/**
 	 * Log an error message
 	 */
 	error = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('error')) {
-			console.error(`❌ ${message}`, ...args);
+			this.#write(`❌ ${message}`, ...args);
 		}
 	};
 
@@ -32,7 +42,7 @@ export class Logger {
 	 */
 	warn = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('warn')) {
-			console.warn(`⚠️  ${message}`, ...args);
+			this.#write(`⚠️  ${message}`, ...args);
 		}
 	};
 
@@ -41,7 +51,7 @@ export class Logger {
 	 */
 	info = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(message, ...args);
+			this.#write(message, ...args);
 		}
 	};
 
@@ -50,7 +60,7 @@ export class Logger {
 	 */
 	debug = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('debug')) {
-			console.debug(`🐛 ${message}`, ...args);
+			this.#write(`🐛 ${message}`, ...args);
 		}
 	};
 
@@ -59,7 +69,7 @@ export class Logger {
 	 */
 	success = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(`✅ ${message}`, ...args);
+			this.#write(`✅ ${message}`, ...args);
 		}
 	};
 
@@ -68,8 +78,8 @@ export class Logger {
 	 */
 	header = (title: string, separator = '='): void => {
 		if (this.#shouldLog('info')) {
-			console.info(`\n${title}`);
-			console.info(separator.repeat(Math.max(50, title.length)));
+			this.#write(`\n${title}`);
+			this.#write(separator.repeat(Math.max(50, title.length)));
 		}
 	};
 
@@ -78,7 +88,7 @@ export class Logger {
 	 */
 	raw = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(message, ...args);
+			this.#write(message, ...args);
 		}
 	};
 }

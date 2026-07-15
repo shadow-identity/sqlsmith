@@ -24,10 +24,10 @@ export { SqlMerger } from './sql-merger.js';
 // Core types
 export type { DependencyGraph } from './types/dependency-graph.js';
 // Error handling
-export type { ErrorCode } from './types/errors.js';
 export {
 	ConfigurationError,
 	DependencyError,
+	ErrorCode,
 	FileSystemError,
 	ParsingError,
 	ProcessingError,

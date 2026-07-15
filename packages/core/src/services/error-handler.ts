@@ -1,5 +1,6 @@
-import { ErrorCode, SqlMergerError } from '../types/errors.js';
-import { Logger } from './logger.js';
+import type { ErrorCode } from '../types/errors.js';
+import { SqlMergerError } from '../types/errors.js';
+import type { Logger } from './logger.js';
 
 export class ErrorHandler {
 	#logger: Logger;
@@ -96,40 +97,5 @@ export class ErrorHandler {
 		);
 
 		return sqlError;
-	}
-
-	/**
-	 * Handle CLI command errors with proper exit codes
-	 */
-	handleCommandError(error: unknown, quiet = false): never {
-		// Don't log if already logged by handleError
-		if (!(error instanceof SqlMergerError)) {
-			const tempLogger = new Logger({ logLevel: quiet ? 'error' : 'info' });
-			tempLogger.error(error instanceof Error ? error.message : String(error));
-		}
-
-		// Exit with appropriate code based on error type
-		let exitCode = 1;
-		if (error instanceof SqlMergerError) {
-			switch (error.code) {
-				case ErrorCode.DIRECTORY_NOT_FOUND:
-				case ErrorCode.FILE_NOT_FOUND:
-				case ErrorCode.NO_SQL_FILES:
-					exitCode = 2; // Input/file errors
-					break;
-				case ErrorCode.CIRCULAR_DEPENDENCY:
-				case ErrorCode.DUPLICATE_STATEMENT_NAMES:
-					exitCode = 3; // Dependency errors
-					break;
-				case ErrorCode.INVALID_OPTIONS:
-				case ErrorCode.MISSING_REQUIRED_OPTION:
-					exitCode = 4; // Configuration errors
-					break;
-				default:
-					exitCode = 1; // General errors
-			}
-		}
-
-		process.exit(exitCode);
 	}
 }

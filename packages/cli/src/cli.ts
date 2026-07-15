@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { ErrorHandler, Logger } from '@sqlsmith/core';
 import { Command, Option } from 'commander';
 import {
 	executeInfoCommand,
@@ -130,8 +129,6 @@ export const main = async (): Promise<void> => {
 // If this module is run directly, execute the CLI
 if (import.meta.url === `file://${process.argv[1]}`) {
 	main().catch((error) => {
-		const logger = new Logger({ logLevel: 'info' });
-		const errorHandler = new ErrorHandler(logger);
-		errorHandler.handleCommandError(error);
+		handleCommandError(error, 'info');
 	});
 }

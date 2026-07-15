@@ -1,7 +1,8 @@
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LogLevel } from '@sqlsmith/core';
 import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	executeMergeCommand,
 	type MergeCommandOptions,
@@ -15,12 +16,22 @@ vi.mock('@sqlsmith/core', () => ({
 	},
 }));
 
+vi.mock('node:fs', () => ({
+	writeFileSync: vi.fn(),
+}));
+
 vi.mock('node:path', () => ({
 	resolve: vi.fn(),
 }));
 
+/**
+ * Command contract: the merge command owns result delivery. The core merger
+ * only computes the merged SQL string; the command writes it to the requested
+ * file, or to stdout when no output path is given.
+ */
 describe('executeMergeCommand', () => {
-	// Mock instances
+	const MERGED_SQL = '-- merged\nCREATE TABLE fake ();\n';
+
 	const mockLogger = {
 		info: vi.fn(),
 		success: vi.fn(),
@@ -35,23 +46,22 @@ describe('executeMergeCommand', () => {
 		getLogger: vi.fn(() => mockLogger),
 	};
 
-	// Cast mocks for better type safety
 	const MockedServiceContainer = vi.mocked(ServiceContainer);
 	const MockedSqlMerger = vi.mocked(SqlMerger);
 	const mockedResolve = vi.mocked(resolve);
+	const mockedWriteFileSync = vi.mocked(writeFileSync);
+
+	let stdoutSpy: ReturnType<typeof vi.spyOn>;
 
 	const defaultOptions: MergeCommandOptions = {
 		dialect: 'postgresql' as SqlDialect,
 		logLevel: 'info' as LogLevel,
 		output: 'output.sql',
-		allowReorderDropComments: false,
 	};
 
 	beforeEach(() => {
-		// Reset all mocks (including implementations) before each test
 		vi.resetAllMocks();
 
-		// Setup default mock implementations
 		MockedServiceContainer.mockImplementation(
 			class {
 				getLogger = mockContainer.getLogger;
@@ -59,145 +69,88 @@ describe('executeMergeCommand', () => {
 		);
 		MockedSqlMerger.withContainer.mockReturnValue(mockMerger as any);
 		mockedResolve.mockImplementation((path: string) => `/resolved/${path}`);
-
-		// Restore container method implementations after reset
 		mockContainer.getLogger.mockImplementation(() => mockLogger);
+		mockMerger.parseSqlFiles.mockReturnValue([{ id: 'file1' }]);
+		mockMerger.mergeFiles.mockReturnValue(MERGED_SQL);
+
+		stdoutSpy = vi
+			.spyOn(process.stdout, 'write')
+			.mockImplementation(() => true);
 	});
 
-	describe('successful execution', () => {
-		it('should execute successfully with valid inputs', async () => {
-			const inputPath = './test-directory';
-			const mockSqlFiles = [{ id: 'file1', content: 'CREATE TABLE test...' }];
-			mockMerger.parseSqlFiles.mockReturnValue(mockSqlFiles);
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
-			await executeMergeCommand(inputPath, defaultOptions);
-
-			// Verify ServiceContainer is created with correct options
-			expect(MockedServiceContainer).toHaveBeenCalledWith({
-				loggerOptions: {
-					logLevel: 'info',
-				},
-				allowReorderDropComments: false,
+	describe('result delivery', () => {
+		it('writes the merged SQL to the output file when output is provided', async () => {
+			await executeMergeCommand('./in', {
+				...defaultOptions,
+				output: '/tmp/merged.sql',
 			});
 
-			// Verify path resolution
-			expect(mockedResolve).toHaveBeenCalledWith(inputPath);
+			expect(mockedWriteFileSync).toHaveBeenCalledWith(
+				'/tmp/merged.sql',
+				MERGED_SQL,
+				'utf-8',
+			);
+			expect(stdoutSpy).not.toHaveBeenCalled();
+		});
 
-			// Verify merger creation and calls
+		it('writes the merged SQL to stdout when no output is provided', async () => {
+			await executeMergeCommand('./in', {
+				...defaultOptions,
+				output: undefined,
+			});
+
+			expect(mockedWriteFileSync).not.toHaveBeenCalled();
+			const stdout = stdoutSpy.mock.calls
+				.map((call) => String(call[0]))
+				.join('');
+			expect(stdout).toContain(MERGED_SQL);
+		});
+
+		it('does not pass output handling down to the core merger', async () => {
+			await executeMergeCommand('./in', defaultOptions);
+
+			const [, mergeOptions] = mockMerger.mergeFiles.mock.calls[0];
+			expect(mergeOptions).not.toHaveProperty('outputPath');
+		});
+	});
+
+	describe('core invocation', () => {
+		it('creates the container with logger options and parses the resolved input', async () => {
+			await executeMergeCommand('./my-dir', defaultOptions);
+
+			expect(MockedServiceContainer).toHaveBeenCalledWith(
+				expect.objectContaining({
+					loggerOptions: { logLevel: 'info' },
+				}),
+			);
+			expect(mockedResolve).toHaveBeenCalledWith('./my-dir');
 			expect(MockedSqlMerger.withContainer).toHaveBeenCalledWith(
 				MockedServiceContainer.mock.instances[0],
 			);
 			expect(mockMerger.parseSqlFiles).toHaveBeenCalledWith(
-				'/resolved/./test-directory',
+				'/resolved/./my-dir',
 				'postgresql',
 			);
-			expect(mockMerger.mergeFiles).toHaveBeenCalledWith(mockSqlFiles, {
-				addComments: true,
-				includeHeader: true,
-				separateStatements: true,
-				outputPath: 'output.sql',
-			});
+		});
 
-			// Verify logging
-			expect(mockLogger.info).toHaveBeenCalledWith('🔧 SQL Merger');
-			expect(mockLogger.success).toHaveBeenCalledWith(
-				'Merge completed successfully',
+		it('merges the parsed files with presentation options', async () => {
+			const sqlFiles = [{ id: 'file1' }];
+			mockMerger.parseSqlFiles.mockReturnValue(sqlFiles);
+
+			await executeMergeCommand('./in', defaultOptions);
+
+			expect(mockMerger.mergeFiles).toHaveBeenCalledWith(
+				sqlFiles,
+				expect.objectContaining({
+					addComments: true,
+					includeHeader: true,
+					separateStatements: true,
+				}),
 			);
-		});
-
-		it('should handle undefined output path', async () => {
-			const inputPath = './test-directory';
-			const optionsWithoutOutput = { ...defaultOptions, output: undefined };
-			const mockSqlFiles = [{ id: 'file1', content: 'CREATE TABLE test...' }];
-			mockMerger.parseSqlFiles.mockReturnValue(mockSqlFiles);
-
-			await executeMergeCommand(inputPath, optionsWithoutOutput);
-
-			expect(mockMerger.mergeFiles).toHaveBeenCalledWith(mockSqlFiles, {
-				addComments: true,
-				includeHeader: true,
-				separateStatements: true,
-				outputPath: undefined,
-			});
-		});
-
-		it('should pass allowReorderDropComments to ServiceContainer', async () => {
-			const inputPath = './test-directory';
-			const optionsWithReorder = {
-				...defaultOptions,
-				allowReorderDropComments: true,
-			};
-
-			await executeMergeCommand(inputPath, optionsWithReorder);
-
-			expect(MockedServiceContainer).toHaveBeenCalledWith({
-				loggerOptions: {
-					logLevel: 'info',
-				},
-				allowReorderDropComments: true,
-			});
-		});
-	});
-
-	describe('integration flow', () => {
-		it('should execute operations in the correct order', async () => {
-			const callOrder: string[] = [];
-			const mockSqlFiles = [{ id: 'file1' }];
-
-			MockedServiceContainer.mockImplementation(
-				class {
-					constructor() {
-						callOrder.push('ServiceContainer');
-					}
-
-					getLogger = mockContainer.getLogger;
-				} as any,
-			);
-
-			mockContainer.getLogger.mockImplementation(() => {
-				callOrder.push('getLogger');
-				return mockLogger;
-			});
-
-			mockLogger.info.mockImplementation(() => {
-				callOrder.push('logger.info');
-			});
-
-			mockedResolve.mockImplementation((path: string) => {
-				callOrder.push('resolve');
-				return `/resolved/${path}`;
-			});
-
-			MockedSqlMerger.withContainer.mockImplementation(() => {
-				callOrder.push('SqlMerger.withContainer');
-				return mockMerger as any;
-			});
-
-			mockMerger.parseSqlFiles.mockImplementation(() => {
-				callOrder.push('parseSqlFiles');
-				return mockSqlFiles as any;
-			});
-
-			mockMerger.mergeFiles.mockImplementation(() => {
-				callOrder.push('mergeFiles');
-			});
-
-			mockLogger.success.mockImplementation(() => {
-				callOrder.push('logger.success');
-			});
-
-			await executeMergeCommand('./test', defaultOptions);
-
-			expect(callOrder).toEqual([
-				'ServiceContainer',
-				'getLogger',
-				'logger.info',
-				'resolve',
-				'SqlMerger.withContainer',
-				'parseSqlFiles',
-				'mergeFiles',
-				'logger.success',
-			]);
 		});
 	});
 });

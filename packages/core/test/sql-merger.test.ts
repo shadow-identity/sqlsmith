@@ -1,10 +1,4 @@
-import {
-	existsSync,
-	readdirSync,
-	readFileSync,
-	statSync,
-	unlinkSync,
-} from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Logger } from '../src/services/logger.js';
@@ -247,39 +241,6 @@ describe('SqlMerger', () => {
 			expect(merged).toBeDefined();
 			expect(merged).toContain('CREATE TABLE');
 			expect(merged).not.toContain('SQLsmith Output');
-		});
-
-		it('should write output to file when outputPath is provided', () => {
-			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
-			const outputPath = resolve(process.cwd(), 'test-output.sql');
-
-			// Clean up any existing file
-			if (existsSync(outputPath)) {
-				unlinkSync(outputPath);
-			}
-
-			const merged = merger.mergeFiles(sqlFiles, { outputPath });
-
-			expect(merged).toBeDefined();
-			expect(existsSync(outputPath)).toBe(true);
-
-			const fileContent = readFileSync(outputPath, 'utf-8');
-			expect(fileContent).toContain('CREATE TABLE');
-			expect(fileContent).toContain('SQLsmith Output');
-
-			// Clean up
-			unlinkSync(outputPath);
-		});
-
-		it('should throw error for invalid output file path', () => {
-			const scenarioPath = getFixturePath('postgresql', 'correct/base_tables');
-			const sqlFiles = merger.parseSqlFiles(scenarioPath, 'postgresql');
-			const invalidPath = '/invalid/path/that/does/not/exist/output.sql';
-
-			expect(() => {
-				merger.mergeFiles(sqlFiles, { outputPath: invalidPath });
-			}).toThrow();
 		});
 
 		it('should handle empty file list gracefully', () => {
