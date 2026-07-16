@@ -166,6 +166,42 @@ describe('Logger', () => {
 		});
 	});
 
+	describe('isLevelEnabled', () => {
+		const levels: LogLevel[] = ['error', 'warn', 'info', 'debug'];
+
+		const expectations: Array<{
+			logLevel: LogLevel;
+			enabled: LogLevel[];
+		}> = [
+			{ logLevel: 'silent', enabled: [] },
+			{ logLevel: 'error', enabled: ['error'] },
+			{ logLevel: 'warn', enabled: ['error', 'warn'] },
+			{ logLevel: 'info', enabled: ['error', 'warn', 'info'] },
+			{ logLevel: 'debug', enabled: ['error', 'warn', 'info', 'debug'] },
+		];
+
+		expectations.forEach(({ logLevel, enabled }) => {
+			it(`at ${logLevel} reports exactly [${enabled.join(', ')}] as enabled`, () => {
+				const logger = new Logger({ logLevel });
+				for (const level of levels) {
+					expect(logger.isLevelEnabled(level)).toBe(enabled.includes(level));
+				}
+			});
+		});
+
+		it('never reports silent as an enabled level', () => {
+			for (const logLevel of [
+				'silent',
+				'error',
+				'warn',
+				'info',
+				'debug',
+			] as const) {
+				expect(new Logger({ logLevel }).isLevelEnabled('silent')).toBe(false);
+			}
+		});
+	});
+
 	describe('formatting', () => {
 		let logger: Logger;
 

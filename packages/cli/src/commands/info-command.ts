@@ -2,14 +2,12 @@ import { resolve } from 'node:path';
 import {
 	Logger,
 	type LogLevel,
-	type SqlDialect,
-	SqlMerger,
-} from '@sqlsmith/core';
-import {
 	renderDependencyGraph,
 	renderDiagnostics,
 	renderRecommendedOrder,
-} from './renderers.js';
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 
 export type InfoCommandOptions = {
 	dialect: SqlDialect;

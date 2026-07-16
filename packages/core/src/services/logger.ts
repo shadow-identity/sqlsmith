@@ -25,6 +25,13 @@ export class Logger {
 		return messageLevelIndex <= currentLevelIndex;
 	};
 
+	/**
+	 * Report whether messages of the given level would be emitted.
+	 * `silent` is never enabled: it is an off switch, not a message level.
+	 */
+	isLevelEnabled = (level: LogLevel): boolean =>
+		level !== 'silent' && this.#shouldLog(level);
+
 	#write = (message: string, ...args: unknown[]): void => {
 		process.stderr.write(`${format(message, ...args)}\n`);
 	};

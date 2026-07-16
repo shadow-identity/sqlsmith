@@ -2,10 +2,11 @@ import { resolve } from 'node:path';
 import {
 	Logger,
 	type LogLevel,
+	renderDiagnostics,
+	renderValidationSummary,
 	type SqlDialect,
 	SqlMerger,
 } from '@sqlsmith/core';
-import { renderDiagnostics, renderValidationSummary } from './renderers.js';
 
 export type ValidateCommandOptions = {
 	dialect: SqlDialect;

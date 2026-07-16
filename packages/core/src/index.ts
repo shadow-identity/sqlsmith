@@ -19,6 +19,14 @@ export { getDialectAstAdapter } from './services/dialect-ast-adapter.js';
 export { FileSystemValidator } from './services/file-system-validator.js';
 export type { LoggerOptions, LogLevel } from './services/logger.js';
 export { Logger } from './services/logger.js';
+export {
+	renderDependencyGraph,
+	renderDiagnostic,
+	renderDiagnostics,
+	renderDiscoveredFiles,
+	renderRecommendedOrder,
+	renderValidationSummary,
+} from './services/plan-renderers.js';
 export type {
 	SelectRelationCollection,
 	SelectRelationCollectorOptions,

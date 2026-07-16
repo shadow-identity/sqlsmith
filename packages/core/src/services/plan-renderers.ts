@@ -1,20 +1,39 @@
-import type { Logger, MergePlan, RelationKey } from '@sqlsmith/core';
+import type { MergeDiagnostic, MergePlan } from '../types/merge-plan.js';
+import type { RelationKey } from '../types/relation-identifier.js';
+import type { Logger } from './logger.js';
+
+export const renderDiagnostic = (
+	logger: Logger,
+	diagnostic: MergeDiagnostic,
+): void => {
+	switch (diagnostic.code) {
+		case 'EXTERNAL_REFERENCE':
+			logger.warn(diagnostic.message);
+			break;
+		case 'RAW_STATEMENTS':
+			logger.warn(`${diagnostic.message}: ${diagnostic.statements.join(', ')}`);
+			break;
+		case 'RAW_ONLY_FILE':
+			logger.warn(diagnostic.message);
+			break;
+	}
+};
 
 export const renderDiagnostics = (logger: Logger, plan: MergePlan): void => {
 	for (const diagnostic of plan.diagnostics) {
-		switch (diagnostic.code) {
-			case 'EXTERNAL_REFERENCE':
-				logger.warn(diagnostic.message);
-				break;
-			case 'RAW_STATEMENTS':
-				logger.warn(
-					`${diagnostic.message}: ${diagnostic.statements.join(', ')}`,
-				);
-				break;
-			case 'RAW_ONLY_FILE':
-				logger.warn(diagnostic.message);
-				break;
-		}
+		renderDiagnostic(logger, diagnostic);
+	}
+};
+
+export const renderDiscoveredFiles = (
+	logger: Logger,
+	plan: MergePlan,
+): void => {
+	logger.debug(`Discovered ${plan.files.length} SQL file(s):`);
+	for (const file of plan.files) {
+		logger.debug(
+			`  ${file.path} (${file.statements.length} statement(s))`,
+		);
 	}
 };
 

@@ -4,10 +4,10 @@ import type { LogLevel } from '@sqlsmith/core';
 import {
 	FileSystemError,
 	Logger,
+	renderDiagnostics,
 	type SqlDialect,
 	SqlMerger,
 } from '@sqlsmith/core';
-import { renderDiagnostics } from './renderers.js';
 
 export type MergeCommandOptions = {
 	output?: string;
