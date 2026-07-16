@@ -1,4 +1,5 @@
 import type { AST } from 'node-sql-parser';
+import type { RelationIdentifier } from './relation-identifier.js';
 
 export type StatementType =
 	| 'table'
@@ -12,13 +13,19 @@ export type StatementType =
 export type SqlDialect = 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
 
 export interface Dependency {
-	name: string;
-	type: StatementType;
+	/** Canonical relation identity used for matching and graph operations. */
+	readonly identifier: RelationIdentifier;
+	/** @deprecated Use `identifier.display`; retained as a display-only alias. */
+	readonly name: string;
+	readonly type: StatementType;
 }
 
 export interface SqlStatement {
 	type: StatementType;
-	name: string;
+	/** Present for every recognized relation statement; absent for raw SQL. */
+	readonly identifier?: RelationIdentifier;
+	/** @deprecated Use `identifier.display`; raw statements retain a synthetic name. */
+	readonly name: string;
 	dependsOn: Dependency[];
 	filePath: string;
 	content: string;

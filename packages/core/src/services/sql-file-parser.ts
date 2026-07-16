@@ -4,7 +4,10 @@ import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { AST } from 'node-sql-parser';
 import pkg from 'node-sql-parser';
 
-import type { StatementProcessor } from '../processors/base-processor.js';
+import type {
+	StatementProcessor,
+	StatementProcessorContext,
+} from '../processors/base-processor.js';
 import {
 	FileSystemError,
 	ParsingError,
@@ -12,21 +15,32 @@ import {
 	SqlMergerError,
 } from '../types/errors.js';
 import type { DiscoveryOptions } from '../types/merge-plan.js';
+import { createIdentifierRules } from '../types/relation-identifier.js';
 import type {
 	SqlDialect,
 	SqlFile,
 	SqlStatement,
 } from '../types/sql-statement.js';
+import { scanRelationNames } from './sql-identifier-lexer.js';
 import { splitSqlStatements } from './sql-statement-splitter.js';
 
 const { Parser } = pkg;
 
+export interface SqlFileParserOptions {
+	readonly defaultSchema?: string;
+}
+
 export class SqlFileParser {
 	#parser = new Parser();
 	#processors: StatementProcessor[] = [];
+	#defaultSchema?: string;
 
-	constructor(processors: StatementProcessor[] = []) {
+	constructor(
+		processors: StatementProcessor[] = [],
+		options: SqlFileParserOptions = {},
+	) {
 		this.#processors = processors;
+		this.#defaultSchema = options.defaultSchema;
 	}
 
 	addProcessor(processor: StatementProcessor): void {
@@ -146,6 +160,13 @@ export class SqlFileParser {
 
 		chunks.forEach((chunk, index) => {
 			const normalized = this.#normalizeSqlForParser(chunk.text, dialect);
+			const source = chunk.leadingTrivia + chunk.text;
+			const processorContext: StatementProcessorContext = {
+				source,
+				dialect,
+				identifierRules: createIdentifierRules(dialect, this.#defaultSchema),
+				relationNames: scanRelationNames(source),
+			};
 
 			let ast: AST | AST[];
 			try {
@@ -172,8 +193,12 @@ export class SqlFileParser {
 			astNodes.push(node);
 
 			const statement =
-				this.#extractRecognizedStatement(node, filePath, chunk.startLine) ??
-				this.#buildRawStatement(node, filePath, index);
+				this.#extractRecognizedStatement(
+					node,
+					filePath,
+					chunk.startLine,
+					processorContext,
+				) ?? this.#buildRawStatement(node, filePath, index);
 
 			statement.content = (chunk.leadingTrivia + chunk.text).trim();
 			statement.orderInFile = index;
@@ -193,11 +218,12 @@ export class SqlFileParser {
 		node: AST,
 		filePath: string,
 		lineNumber: number,
+		context: StatementProcessorContext,
 	): SqlStatement | undefined {
 		for (const processor of this.#processors) {
 			let extracted: SqlStatement[];
 			try {
-				extracted = processor.extractStatements(node, filePath);
+				extracted = processor.extractStatements(node, filePath, context);
 			} catch (error: unknown) {
 				if (error instanceof SqlMergerError) throw error;
 				throw ProcessingError.processorError(

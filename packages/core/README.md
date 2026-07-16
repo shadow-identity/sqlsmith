@@ -13,7 +13,7 @@ npm install @sqlsmith/core
 ```typescript
 import { SqlMerger } from '@sqlsmith/core';
 
-const merger = new SqlMerger();
+const merger = new SqlMerger({ defaultSchema: 'public' });
 
 // Parse, validate, build the graph, and compute the final order once
 const plan = merger.planDirectory('./schemas', 'postgresql');
@@ -28,6 +28,12 @@ const merged = merger.merge(plan, {
 console.log(merged); // Merged SQL content
 console.log(plan.diagnostics); // Structured external/raw diagnostics
 ```
+
+PostgreSQL relations use canonical `(schema, name)` identity. Unquoted parts
+fold to lowercase, quoted parts retain exact case, and unqualified names use
+`defaultSchema` (`public` by default). Runtime `SET search_path` statements are
+passed through as SQL but are not interpreted; configure `defaultSchema`
+explicitly when the effective schema differs.
 
 ## Features
 
@@ -75,11 +81,17 @@ import type { SqlStatement } from './types/sql-statement'
 export interface StatementProcessor {
   getHandledTypes(): string[]
   canProcess(statement: AST): boolean
-  extractStatements(ast: AST | AST[], filePath: string): SqlStatement[]
+  extractStatements(
+    ast: AST | AST[],
+    filePath: string,
+    context?: StatementProcessorContext
+  ): SqlStatement[]
 }
 ```
 
-Note: pre-release change — the `extractStatements` method no longer receives a `dialect` parameter. If you need dialect-specific behavior in a custom processor, pass it via the constructor or configuration when creating the processor.
+The optional context provides the original source chunk, dialect,
+identifier rules, and lexed relation-name tokens. Existing two-argument custom
+processors remain structurally compatible.
 
 ### Extension points
 

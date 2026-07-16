@@ -47,6 +47,10 @@ export const createProgram = (): Command => {
 			'--allow-external-references',
 			'Allow foreign keys referencing tables outside the input files',
 		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
+		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
 				.choices(['error', 'warn', 'info', 'debug'])
@@ -83,6 +87,10 @@ export const createProgram = (): Command => {
 			'--allow-external-references',
 			'Allow foreign keys referencing tables outside the input files',
 		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
+		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
 				.choices(['error', 'warn', 'info', 'debug'])
@@ -111,6 +119,10 @@ export const createProgram = (): Command => {
 		.option(
 			'--allow-external-references',
 			'Allow foreign keys referencing tables outside the input files',
+		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')

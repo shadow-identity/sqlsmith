@@ -429,6 +429,10 @@ dev server нужен только для одного HMR smoke; если он 
 
 ## Этап 6a — каноническая модель relation identifiers
 
+**Статус: completed.** Все C6A-трассы executable; PostgreSQL identifiers,
+relation-key graph, CLI/plugin `defaultSchema`, lossless golden и полный
+workspace build/test/Biome зелёные.
+
 ### Коррекция исходного аудита
 
 `Dependency.type` не надо механически добавлять в ключ. PostgreSQL требует,

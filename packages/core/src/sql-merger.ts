@@ -28,6 +28,8 @@ export interface SqlMergerOptions {
 	validateSourceOrder?: boolean;
 	/** Convert unknown references into diagnostics instead of errors. */
 	allowExternalReferences?: boolean;
+	/** Schema assigned to unqualified relation names (`public` for PostgreSQL). */
+	defaultSchema?: string;
 	enableViews?: boolean;
 	enableSequences?: boolean;
 	/** Additional statement processors appended to the built-in processors. */
@@ -91,7 +93,9 @@ export class SqlMerger {
 		}
 		processors.push(...(options.processors ?? []));
 
-		this.#fileParser = dependencies.fileParser ?? new SqlFileParser(processors);
+		this.#fileParser =
+			dependencies.fileParser ??
+			new SqlFileParser(processors, { defaultSchema: options.defaultSchema });
 		this.#dependencyAnalyzer =
 			dependencies.dependencyAnalyzer ??
 			new DependencyAnalyzer({
@@ -252,12 +256,19 @@ export class SqlMerger {
 				const statement = file.statements[index];
 				for (const dependency of statement.dependsOn) {
 					const dependencyIndex = file.statements.findIndex(
-						(candidate) => candidate.name === dependency.name,
+						(candidate) =>
+							candidate.identifier?.key === dependency.identifier.key,
 					);
 					if (dependencyIndex > index) {
+						const statementDisplay =
+							statement.identifier?.display ?? statement.name;
 						throw DependencyError.invalidStatementOrder(
 							file.path,
-							`Statement '${statement.name}' at position ${index} depends on '${dependency.name}' which appears later in the file at position ${dependencyIndex}`,
+							`Statement '${statementDisplay}' at position ${index} depends on '${dependency.identifier.display}' which appears later in the file at position ${dependencyIndex}`,
+							{
+								statementKey: statement.identifier?.key,
+								dependencyKey: dependency.identifier.key,
+							},
 						);
 					}
 				}
@@ -266,6 +277,12 @@ export class SqlMerger {
 	}
 }
 
+export type {
+	IdentifierPart,
+	IdentifierRules,
+	RelationIdentifier,
+	RelationKey,
+} from './types/relation-identifier.js';
 export type {
 	Dependency,
 	SqlDialect,

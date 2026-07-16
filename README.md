@@ -114,6 +114,7 @@ sqlsmith <input-directory> [options]
 **Options:**
 - `-o, --output <path>` - Output file path (default: stdout; stdout carries only the merged SQL, all logs go to stderr)
 - `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery (default: postgresql)
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--no-validate-source-order` - Skip validation that statements within a file are declared before their dependents
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
 - `--log-level <level>` - error, warn, info, debug (default: info)
@@ -146,6 +147,7 @@ sqlsmith info <input-directory> [options]
 
 **Options:**
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
 - `--log-level <level>` - error, warn, info, debug (default: info)
 
@@ -177,6 +179,7 @@ sqlsmith validate <input-directory> [options]
 
 **Options:**
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
 - `--log-level <level>` - error, warn, info, debug (default: info)
 
@@ -207,7 +210,7 @@ You can also use SQLsmith programmatically in your Node.js applications:
 ```typescript
 import { SqlMerger } from 'sqlsmith';
 
-const merger = new SqlMerger();
+const merger = new SqlMerger({ defaultSchema: 'public' });
 
 // Parse, validate, build one graph, and compute one stable order
 const plan = merger.planDirectory('./schemas', 'postgresql');
@@ -224,6 +227,11 @@ console.log(merged); // Merged SQL content
 // The same value powers custom info/validation UIs
 console.log(plan.files, plan.graph, plan.orderedStatements, plan.diagnostics);
 ```
+
+PostgreSQL identifier matching is schema-aware: unquoted names fold to
+lowercase, quoted names preserve exact case, and unqualified relations use
+`defaultSchema`. `SET search_path` remains in the emitted SQL but is not
+interpreted during planning.
 
 ## Examples
 

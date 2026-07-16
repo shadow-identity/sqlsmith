@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import * as publicApi from '../src/index.js';
 import type { StatementProcessor } from '../src/processors/base-processor.js';
 import { SqlMerger, type SqlMergerDependencies } from '../src/sql-merger.js';
+import {
+	createIdentifierRules,
+	createRelationIdentifier,
+	unquotedRelationName,
+} from '../src/types/relation-identifier.js';
 import type { SqlFile } from '../src/types/sql-statement.js';
 
 // C4-CONSTRUCTOR / R4-01 / R4-07
@@ -13,12 +18,17 @@ describe('public construction contract', () => {
 	});
 
 	it('accepts narrow typed dependencies without a container', () => {
+		const identifier = createRelationIdentifier(
+			unquotedRelationName('users'),
+			createIdentifierRules('postgresql'),
+		);
 		const file: SqlFile = {
 			path: '/virtual/schema.sql',
 			content: 'CREATE TABLE users (id integer);',
 			statements: [
 				{
 					type: 'table',
+					identifier,
 					name: 'users',
 					dependsOn: [],
 					filePath: '/virtual/schema.sql',

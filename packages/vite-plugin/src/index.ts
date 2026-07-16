@@ -18,6 +18,7 @@ export interface SqlsmithPluginOptions {
 	watch?: boolean;
 	logLevel?: LogLevel;
 	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 }
 
 export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
@@ -28,6 +29,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 	const merger = new SqlMerger({
 		logger,
 		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
 	let command: 'build' | 'serve' = 'build';
 	let watchEnabled = options.watch ?? false;

@@ -1,5 +1,14 @@
 import type { AST } from 'node-sql-parser';
-import type { SqlStatement } from '../types/sql-statement.js';
+import type { LexedRelationName } from '../services/sql-identifier-lexer.js';
+import type { IdentifierRules } from '../types/relation-identifier.js';
+import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
+
+export interface StatementProcessorContext {
+	readonly source: string;
+	readonly dialect: SqlDialect;
+	readonly identifierRules: IdentifierRules;
+	readonly relationNames: readonly LexedRelationName[];
+}
 
 export interface StatementProcessor {
 	getHandledTypes(): string[];
@@ -12,5 +21,9 @@ export interface StatementProcessor {
 	/**
 	 * Extract all statements from the given AST
 	 */
-	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[];
+	extractStatements(
+		ast: AST | AST[],
+		filePath: string,
+		context?: StatementProcessorContext,
+	): SqlStatement[];
 }

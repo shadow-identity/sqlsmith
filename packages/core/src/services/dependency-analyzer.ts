@@ -1,9 +1,13 @@
 import type { DependencyGraph } from '../types/dependency-graph.js';
-import { DependencyError } from '../types/errors.js';
+import { DependencyError, ProcessingError } from '../types/errors.js';
 import type {
 	DependencyAnalysis,
 	MergeDiagnostic,
 } from '../types/merge-plan.js';
+import type {
+	RelationIdentifier,
+	RelationKey,
+} from '../types/relation-identifier.js';
 import type { SqlStatement } from '../types/sql-statement.js';
 
 export interface DependencyAnalyzerOptions {
@@ -23,7 +27,7 @@ export class DependencyAnalyzer {
 
 	/** Build the one dependency graph owned by a MergePlan. */
 	buildStatementGraph(statements: SqlStatement[]): DependencyAnalysis {
-		const graph: DependencyGraph<string> = {
+		const graph: DependencyGraph<RelationKey> = {
 			nodes: new Set(),
 			edges: new Map(),
 			reversedEdges: new Map(),
@@ -33,36 +37,47 @@ export class DependencyAnalyzer {
 			(statement) => statement.type !== 'raw',
 		);
 		const statementMap = new Map(
-			recognized.map((statement) => [statement.name, statement]),
+			recognized.map((statement) => [
+				this.#identifier(statement).key,
+				statement,
+			]),
 		);
 
 		for (const statement of recognized) {
-			graph.nodes.add(statement.name);
-			graph.edges.set(statement.name, new Set());
-			graph.reversedEdges.set(statement.name, new Set());
+			const key = this.#identifier(statement).key;
+			graph.nodes.add(key);
+			graph.edges.set(key, new Set());
+			graph.reversedEdges.set(key, new Set());
 		}
 
 		for (const statement of recognized) {
+			const statementIdentifier = this.#identifier(statement);
 			for (const dependency of statement.dependsOn) {
-				const dependencyName = dependency.name;
-				if (!statementMap.has(dependencyName)) {
+				const dependencyIdentifier = dependency.identifier;
+				if (!statementMap.has(dependencyIdentifier.key)) {
 					if (!this.#allowExternalReferences) {
 						throw DependencyError.missingDependency(
-							statement.name,
-							dependencyName,
+							statementIdentifier.display,
+							dependencyIdentifier.display,
+							statementIdentifier.key,
+							dependencyIdentifier.key,
 						);
 					}
 					diagnostics.push({
 						code: 'EXTERNAL_REFERENCE',
-						message: `External reference: '${statement.name}' depends on '${dependencyName}' which is not defined in the input files`,
-						statementName: statement.name,
-						dependencyName,
+						message: `External reference: '${statementIdentifier.display}' depends on '${dependencyIdentifier.display}' which is not defined in the input files`,
+						statementName: statementIdentifier.display,
+						statementKey: statementIdentifier.key,
+						dependencyName: dependencyIdentifier.display,
+						dependencyKey: dependencyIdentifier.key,
 					});
 					continue;
 				}
 
-				graph.edges.get(statement.name)?.add(dependencyName);
-				graph.reversedEdges.get(dependencyName)?.add(statement.name);
+				graph.edges.get(statementIdentifier.key)?.add(dependencyIdentifier.key);
+				graph.reversedEdges
+					.get(dependencyIdentifier.key)
+					?.add(statementIdentifier.key);
 			}
 		}
 
@@ -71,34 +86,42 @@ export class DependencyAnalyzer {
 
 	/** Validate names before graph construction so every graph node is unique. */
 	validateNoDuplicateNames(statements: SqlStatement[]): void {
-		const nameToFile = new Map<string, string>();
-		const duplicates: Array<{ name: string; files: string[] }> = [];
+		const groups = new Map<
+			RelationKey,
+			{ name: string; key: RelationKey; files: string[]; count: number }
+		>();
 
 		for (const statement of statements) {
 			if (statement.type === 'raw') continue;
+			const identifier = this.#identifier(statement);
 			const fileName =
 				statement.filePath.split('/').pop() || statement.filePath;
-			const existingFile = nameToFile.get(statement.name);
-			if (!existingFile) {
-				nameToFile.set(statement.name, fileName);
+			const group = groups.get(identifier.key);
+			if (!group) {
+				groups.set(identifier.key, {
+					name: identifier.display,
+					key: identifier.key,
+					files: [fileName],
+					count: 1,
+				});
 				continue;
 			}
-
-			const existing = duplicates.find(
-				(duplicate) => duplicate.name === statement.name,
-			);
-			if (existing) {
-				if (!existing.files.includes(fileName)) existing.files.push(fileName);
-			} else {
-				duplicates.push({
-					name: statement.name,
-					files: [existingFile, fileName],
-				});
-			}
+			group.count++;
+			if (!group.files.includes(fileName)) group.files.push(fileName);
 		}
 
+		const duplicates = [...groups.values()]
+			.filter(({ count }) => count > 1)
+			.map(({ name, key, files }) => ({ name, key, files }));
 		if (duplicates.length > 0) {
 			throw DependencyError.duplicateStatementNames(duplicates);
 		}
+	}
+
+	#identifier(statement: SqlStatement): RelationIdentifier {
+		if (statement.identifier) return statement.identifier;
+		throw ProcessingError.internalError(
+			`Recognized statement '${statement.name}' has no relation identifier`,
+		);
 	}
 }

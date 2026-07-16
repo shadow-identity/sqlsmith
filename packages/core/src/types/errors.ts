@@ -190,14 +190,17 @@ export class ParsingError extends SqlMergerError {
 }
 
 export class DependencyError extends SqlMergerError {
-	static circularDependency(cycles: string[][]): DependencyError {
+	static circularDependency(
+		cycles: string[][],
+		cycleKeys?: string[][],
+	): DependencyError {
 		const cycleDescriptions = cycles
 			.map((cycle) => cycle.join(' → '))
 			.join(', ');
 		const error = new DependencyError(
 			`Circular dependencies detected: ${cycleDescriptions}`,
 			ErrorCode.CIRCULAR_DEPENDENCY,
-			{ cycles, cycleDescriptions },
+			{ cycles, cycleDescriptions, ...(cycleKeys ? { cycleKeys } : {}) },
 		);
 
 		// Remove verbose stack trace – keep only the first line (name & message)
@@ -207,7 +210,7 @@ export class DependencyError extends SqlMergerError {
 	}
 
 	static duplicateStatementNames(
-		duplicates: Array<{ name: string; files: string[] }>,
+		duplicates: Array<{ name: string; key?: string; files: string[] }>,
 	): DependencyError {
 		const duplicateNames = duplicates.map((d) => d.name).join(', ');
 		return new DependencyError(
@@ -220,22 +223,30 @@ export class DependencyError extends SqlMergerError {
 	static missingDependency(
 		statementName: string,
 		dependencyName: string,
+		statementKey?: string,
+		dependencyKey?: string,
 	): DependencyError {
 		return new DependencyError(
 			`Statement '${statementName}' depends on '${dependencyName}' which was not found`,
 			ErrorCode.MISSING_DEPENDENCY,
-			{ statementName, dependencyName },
+			{
+				statementName,
+				dependencyName,
+				...(statementKey ? { statementKey } : {}),
+				...(dependencyKey ? { dependencyKey } : {}),
+			},
 		);
 	}
 
 	static invalidStatementOrder(
 		fileName: string,
 		details: string,
+		context: Record<string, unknown> = {},
 	): DependencyError {
 		return new DependencyError(
 			`Invalid statement order in file '${fileName}': ${details}`,
 			ErrorCode.INVALID_STATEMENT_ORDER,
-			{ fileName, details },
+			{ fileName, details, ...context },
 		);
 	}
 }

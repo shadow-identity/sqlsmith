@@ -5,12 +5,23 @@ import { DependencyAnalyzer } from '../src/services/dependency-analyzer.js';
 import type { Logger } from '../src/services/logger.js';
 import { SqlMerger } from '../src/sql-merger.js';
 import { DependencyError, ErrorCode } from '../src/types/errors.js';
+import {
+	createIdentifierRules,
+	createRelationIdentifier,
+	unquotedRelationName,
+} from '../src/types/relation-identifier.js';
 import type { SqlFile } from '../src/types/sql-statement.js';
 
 // C4-SINGLE-PLAN / C4-CYCLE / C4-PRESENTATION / R4-02 / R4-03 / R4-04
 
 const fixture = (scenario: string): string =>
 	resolve(process.cwd(), `test/fixtures/postgresql/${scenario}`);
+
+const relation = (name: string) =>
+	createRelationIdentifier(
+		unquotedRelationName(name),
+		createIdentifierRules('postgresql'),
+	);
 
 const silentLogger = (): Logger =>
 	({
@@ -42,7 +53,11 @@ describe('MergePlan contract', () => {
 			'y',
 		]);
 		expect([...plan.graph.nodes]).toEqual(
-			expect.arrayContaining(['x', 'y', 'z']),
+			expect.arrayContaining([
+				relation('x').key,
+				relation('y').key,
+				relation('z').key,
+			]),
 		);
 		expect(plan.orderedStatements.map((statement) => statement.name)).toEqual([
 			'x',
@@ -104,8 +119,11 @@ describe('MergePlan contract', () => {
 				statements: [
 					{
 						type: 'table',
+						identifier: relation('a'),
 						name: 'a',
-						dependsOn: [{ name: 'b', type: 'table' }],
+						dependsOn: [
+							{ identifier: relation('b'), name: 'b', type: 'table' },
+						],
 						filePath: '/virtual/a.sql',
 						content: 'CREATE TABLE a (b_id integer);',
 					},
@@ -117,8 +135,11 @@ describe('MergePlan contract', () => {
 				statements: [
 					{
 						type: 'table',
+						identifier: relation('b'),
 						name: 'b',
-						dependsOn: [{ name: 'a', type: 'table' }],
+						dependsOn: [
+							{ identifier: relation('a'), name: 'a', type: 'table' },
+						],
 						filePath: '/virtual/b.sql',
 						content: 'CREATE TABLE b (a_id integer);',
 					},

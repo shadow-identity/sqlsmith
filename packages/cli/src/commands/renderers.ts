@@ -1,4 +1,4 @@
-import type { Logger, MergePlan } from '@sqlsmith/core';
+import type { Logger, MergePlan, RelationKey } from '@sqlsmith/core';
 
 export const renderDiagnostics = (logger: Logger, plan: MergePlan): void => {
 	for (const diagnostic of plan.diagnostics) {
@@ -23,14 +23,21 @@ export const renderDependencyGraph = (
 	plan: MergePlan,
 ): void => {
 	const statementMap = new Map(
-		plan.statements.map((statement) => [statement.name, statement]),
+		plan.statements.flatMap((statement) =>
+			statement.identifier
+				? [[statement.identifier.key, statement] as const]
+				: [],
+		),
 	);
+	const display = (key: RelationKey): string =>
+		statementMap.get(key)?.identifier?.display ?? key;
 	logger.header('🔗 Dependency Graph');
 
 	for (const node of plan.graph.nodes) {
 		const statement = statementMap.get(node);
-		const dependencies = plan.graph.edges.get(node) ?? new Set<string>();
-		const dependents = plan.graph.reversedEdges.get(node) ?? new Set<string>();
+		const dependencies = plan.graph.edges.get(node) ?? new Set<RelationKey>();
+		const dependents =
+			plan.graph.reversedEdges.get(node) ?? new Set<RelationKey>();
 		const nonSelfDependencies = [...dependencies].filter(
 			(dependency) => dependency !== node,
 		);
@@ -38,16 +45,20 @@ export const renderDependencyGraph = (
 			(dependent) => dependent !== node,
 		);
 
-		logger.info(`📊 ${statement?.type.toUpperCase() ?? 'UNKNOWN'}: ${node}`);
 		logger.info(
-			`  ➡️  Depends on: ${nonSelfDependencies.join(', ') || '(none)'}`,
+			`📊 ${statement?.type.toUpperCase() ?? 'UNKNOWN'}: ${display(node)}`,
+		);
+		logger.info(
+			`  ➡️  Depends on: ${nonSelfDependencies.map(display).join(', ') || '(none)'}`,
 		);
 		if (dependencies.has(node)) {
-			logger.info(`  🔄 Self-referencing: ${node} (hierarchical structure)`);
+			logger.info(
+				`  🔄 Self-referencing: ${display(node)} (hierarchical structure)`,
+			);
 		}
 		if (dependents.size > 0) {
 			logger.info(
-				`  ⬅️  Referenced by: ${nonSelfDependents.join(', ') || '(none)'}`,
+				`  ⬅️  Referenced by: ${nonSelfDependents.map(display).join(', ') || '(none)'}`,
 			);
 		}
 		logger.raw('');
@@ -64,12 +75,15 @@ export const renderRecommendedOrder = (
 	logger.info('📋 Recommended execution order:');
 	plan.orderedStatements.forEach((statement, index) => {
 		const fileName = statement.filePath.split('/').pop();
+		const statementDisplay = statement.identifier?.display ?? statement.name;
 		const dependencies =
 			statement.dependsOn.length > 0
-				? ` (depends on: ${statement.dependsOn.map((item) => item.name).join(', ')})`
+				? ` (depends on: ${statement.dependsOn
+						.map((item) => item.identifier.display)
+						.join(', ')})`
 				: ' (no dependencies)';
 		logger.info(
-			`  ${index + 1}. ${fileName} - ${statement.type}:${statement.name}${dependencies}`,
+			`  ${index + 1}. ${fileName} - ${statement.type}:${statementDisplay}${dependencies}`,
 		);
 	});
 };
@@ -86,7 +100,10 @@ export const renderValidationSummary = (
 		}
 		logger.success(
 			`${fileName} - ${file.statements
-				.map((statement) => `${statement.type}:${statement.name}`)
+				.map(
+					(statement) =>
+						`${statement.type}:${statement.identifier?.display ?? statement.name}`,
+				)
 				.join(', ')}`,
 		);
 	}

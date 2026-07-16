@@ -15,6 +15,7 @@ export type MergeCommandOptions = {
 	logLevel: LogLevel;
 	validateSourceOrder?: boolean;
 	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
 export const executeMergeCommand = async (
@@ -26,6 +27,7 @@ export const executeMergeCommand = async (
 		logger,
 		validateSourceOrder: options.validateSourceOrder ?? true,
 		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
 	logger.info('🔧 SQL Merger');
 

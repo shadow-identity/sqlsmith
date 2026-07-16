@@ -69,6 +69,7 @@ describe('sqlsmith CLI (end-to-end)', () => {
 	let emptyDir: string;
 	let malformedDir: string;
 	let notDirectory: string;
+	let tenantDir: string;
 
 	beforeAll(() => {
 		if (!existsSync(CLI)) {
@@ -80,12 +81,24 @@ describe('sqlsmith CLI (end-to-end)', () => {
 		emptyDir = join(scratchDir, 'empty');
 		malformedDir = join(scratchDir, 'malformed');
 		notDirectory = join(scratchDir, 'not-a-directory.sql');
+		tenantDir = join(scratchDir, 'tenant');
 		mkdirSync(emptyDir);
 		mkdirSync(malformedDir);
+		mkdirSync(tenantDir);
 		writeFileSync(notDirectory, 'CREATE TABLE valid (id int);\n', 'utf8');
 		writeFileSync(
 			join(malformedDir, 'broken.sql'),
 			'CREATE TABLE valid (id int);\n\nCREATE TABLE broken (;\n',
+			'utf8',
+		);
+		writeFileSync(
+			join(tenantDir, 'users.sql'),
+			'CREATE TABLE tenant.users (id int PRIMARY KEY);\n',
+			'utf8',
+		);
+		writeFileSync(
+			join(tenantDir, 'orders.sql'),
+			'CREATE TABLE tenant.orders (user_id int REFERENCES users(id));\n',
 			'utf8',
 		);
 	});
@@ -156,6 +169,7 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			expect(stdout.trim()).toBe('');
 			expect(stderr).toContain('Dependency Graph');
 			expect(stderr).toContain('Recommended execution order');
+			expect(stderr).not.toContain('["relation"');
 		});
 
 		it('validate reports to stderr, not stdout', async () => {
@@ -168,6 +182,22 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			expect(stdout.trim()).toBe('');
 			expect(stderr).toContain('SQL Validator');
 			expect(stderr).toContain('Ready for merging');
+		});
+	});
+
+	describe('canonical identifiers', () => {
+		it('applies --default-schema to unqualified PostgreSQL references', async () => {
+			const { stdout, stderr, exitCode } = await runCli([
+				tenantDir,
+				'--default-schema',
+				'tenant',
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout.indexOf('CREATE TABLE tenant.users')).toBeLessThan(
+				stdout.indexOf('CREATE TABLE tenant.orders'),
+			);
+			expect(stderr).not.toContain('["relation"');
 		});
 	});
 

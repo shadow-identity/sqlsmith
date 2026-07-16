@@ -15,6 +15,7 @@ export type InfoCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
 	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
 export const executeInfoCommand = async (
@@ -25,6 +26,7 @@ export const executeInfoCommand = async (
 	const merger = new SqlMerger({
 		logger,
 		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
 	logger.header('🔍 SQL Dependency Analyzer');
 

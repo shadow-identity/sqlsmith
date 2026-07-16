@@ -11,6 +11,7 @@ export type ValidateCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
 	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
 export const executeValidateCommand = async (
@@ -21,6 +22,7 @@ export const executeValidateCommand = async (
 	const merger = new SqlMerger({
 		logger,
 		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
 	logger.header('✅ SQL Validator');
 

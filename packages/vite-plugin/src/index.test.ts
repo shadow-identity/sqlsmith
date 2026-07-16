@@ -130,6 +130,32 @@ describe('sqlsmith Vite hooks', () => {
 		expect(watched).not.toContain(resolve(output));
 	});
 
+	it('applies defaultSchema to unqualified PostgreSQL references', async () => {
+		writeFileSync(
+			parentFile,
+			'CREATE TABLE tenant.users (id integer PRIMARY KEY);\n',
+		);
+		writeFileSync(
+			childFile,
+			'CREATE TABLE tenant.posts (user_id integer REFERENCES users(id));\n',
+		);
+		const plugin = sqlsmith({
+			input,
+			output,
+			dialect: 'postgresql',
+			defaultSchema: 'tenant',
+			logLevel: 'silent',
+		});
+		await configure(plugin, context, 'build');
+
+		await callHook(plugin, 'buildStart', context);
+
+		const sql = readFileSync(output, 'utf8');
+		expect(sql.indexOf('CREATE TABLE tenant.users')).toBeLessThan(
+			sql.indexOf('CREATE TABLE tenant.posts'),
+		);
+	});
+
 	it('ignores sibling and generated-output events without prefix confusion', async () => {
 		const plugin = createPlugin();
 		await configure(plugin, context, 'serve');

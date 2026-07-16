@@ -46,6 +46,7 @@ sqlsmith validate <input-directory> [options]
 
 - `-o, --output <path>` - Output file path (default: stdout)
 - `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery
+- `--default-schema <schema>` - Schema assigned to unqualified names (PostgreSQL default: `public`)
 - `--allow-reorder-drop-comments` - Allow reordering statements within files (drops comments)
 - `--log-level <level>` - Set log level: error, warn, info, debug (default: info)
 
@@ -78,8 +79,14 @@ sqlsmith validate ./schemas --log-level warn
 
 # Use different SQL dialect
 sqlsmith ./schemas --dialect mysql --output merged.sql
+
+# Resolve unqualified PostgreSQL names in a tenant schema
+sqlsmith ./schemas --default-schema tenant --output merged.sql
 ```
+
+`SET search_path` is preserved in merged SQL but does not alter dependency
+resolution; use `--default-schema` for the effective schema.
 
 ## License
 
-MIT 
+MIT

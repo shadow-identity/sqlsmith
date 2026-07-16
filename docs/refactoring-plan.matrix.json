@@ -558,43 +558,37 @@
 			"id": "T6A-MODEL",
 			"caseIds": ["C6A-MODEL"],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Structured relation identifiers are introduced in stage 6a."
+			"status": "executable"
 		},
 		{
 			"id": "T6A-NORMALIZE",
 			"caseIds": ["C6A-NORMALIZE"],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "PostgreSQL normalization fixtures are added in stage 6a."
+			"status": "executable"
 		},
 		{
 			"id": "T6A-COLLISION",
 			"caseIds": ["C6A-COLLISION"],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Collision-safe keys do not exist yet."
+			"status": "executable"
 		},
 		{
 			"id": "T6A-GRAPH",
 			"caseIds": ["C6A-GRAPH"],
-			"path": "packages/core/test/fixtures/postgresql/identifier-contracts.expected.sql",
-			"status": "planned",
-			"pendingReason": "Graph identity fixtures are added in stage 6a."
+			"path": "packages/core/test/fixtures/postgresql/correct/identifier_contracts.expected.sql",
+			"status": "executable"
 		},
 		{
 			"id": "T6A-NAMESPACE",
 			"caseIds": ["C6A-NAMESPACE"],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Cross-schema and shared relation-namespace cases are added in stage 6a."
+			"status": "executable"
 		},
 		{
 			"id": "T6A-LEXER",
 			"caseIds": ["C6A-LEXER"],
 			"path": "packages/core/test/sql-identifier-lexer.test.ts",
-			"status": "planned",
-			"pendingReason": "The targeted identifier lexer is implemented in stage 6a."
+			"status": "executable"
 		},
 		{
 			"id": "T6B-NESTED",

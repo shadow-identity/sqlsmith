@@ -53,7 +53,11 @@ export class SqlFileMerger {
 			statements.map((s) => s.filePath.split('/').pop()),
 		).size;
 		const order = statements
-			.map((s) => (s.type === 'raw' ? `raw:${s.name}` : `${s.type}:${s.name}`))
+			.map((statement) =>
+				statement.type === 'raw'
+					? `raw:${statement.name}`
+					: `${statement.type}:${this.#displayName(statement)}`,
+			)
 			.join(' → ');
 
 		return `-- SQLsmith Output
@@ -73,9 +77,15 @@ export class SqlFileMerger {
 
 		const deps =
 			statement.dependsOn.length > 0
-				? ` — depends on: ${statement.dependsOn.map((d) => d.name).join(', ')}`
+				? ` — depends on: ${statement.dependsOn
+						.map((dependency) => dependency.identifier.display)
+						.join(', ')}`
 				: '';
-		return `-- ${statement.type}: ${statement.name} (from ${fileName})${deps}`;
+		return `-- ${statement.type}: ${this.#displayName(statement)} (from ${fileName})${deps}`;
+	}
+
+	#displayName(statement: SqlStatement): string {
+		return statement.identifier?.display ?? statement.name;
 	}
 
 	#ensureTerminated(content: string): string {

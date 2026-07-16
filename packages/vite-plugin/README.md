@@ -23,6 +23,7 @@ export default defineConfig({
       input: './src/schemas',     // Directory with SQL files
       output: './src/schema.sql', // Output merged file
       dialect: 'postgresql',      // Optional: SQL dialect
+      defaultSchema: 'public',    // Optional: unqualified relation schema
       logLevel: 'info'            // silent | error | warn | info | debug
     })
   ]
@@ -34,6 +35,7 @@ export default defineConfig({
 - `input` (required): Directory containing SQL files
 - `output` (required): Output file path for merged schema
 - `dialect` (optional): SQL dialect - `postgresql`, `mysql`, `sqlite`, `bigquery` (default: `postgresql`)
+- `defaultSchema` (optional): Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `watch` (optional): Enable file watching (default: auto-detected based on dev/build mode)
 - `logLevel` (optional): Shared SQLsmith log level: `silent`, `error`, `warn`, `info`, or `debug` (default: `info`)
 - `allowExternalReferences` (optional): Keep references to relations outside the input and emit diagnostics instead of failing
@@ -41,6 +43,9 @@ export default defineConfig({
 `silent` suppresses SQLsmith logs only; schema generation and Vite error
 reporting remain active. The former `normal`/`verbose` aliases were removed in
 favor of the shared core levels.
+
+Runtime `SET search_path` statements are preserved but are not interpreted by
+dependency analysis; configure `defaultSchema` to match the effective schema.
 
 ## Discovery and watch lifecycle
 
