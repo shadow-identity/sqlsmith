@@ -16,7 +16,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sqlsmith } from './index.js';
 
 // C5-NESTED / C5-SILENT / C5-CONTAINMENT / C5-WATCH / C5-ATOMIC
-// R5-02 / R5-03 / R5-04 / R5-05 / R5-06
+// C5-DEBUG / C5-DEDUP
+// R5-02 / R5-03 / R5-04 / R5-05 / R5-06 / R5-08 / R5-09
 
 type WatchEvent = 'create' | 'update' | 'delete';
 
@@ -290,6 +291,105 @@ describe('sqlsmith Vite hooks', () => {
 		expect(stderrText()).toContain('Referenced by: posts');
 		expect(stderrText()).toContain('Recommended execution order');
 		expect(stderrText()).toContain('depends on: users');
+	});
+
+	// R5-08 / C5-DEDUP
+	describe('warning deduplication across watch rebuilds', () => {
+		const count = (needle: string): number =>
+			stderrText().split(needle).length - 1;
+
+		const addRawStatement = (): void => {
+			writeFileSync(
+				parentFile,
+				'CREATE TABLE users (id integer PRIMARY KEY);\nCREATE INDEX idx_users_id ON users(id);\n',
+			);
+		};
+
+		it('prints all diagnostics on the first build without a summary line', async () => {
+			addRawStatement();
+			const plugin = createPlugin();
+			await configure(plugin, context, 'serve');
+
+			await callHook(plugin, 'buildStart', context);
+
+			expect(count('unrecognized statement(s)')).toBe(1);
+			expect(stderrText()).not.toContain('known warning(s)');
+		});
+
+		it('collapses known diagnostics into a summary counter on rebuilds', async () => {
+			addRawStatement();
+			const plugin = createPlugin();
+			await configure(plugin, context, 'serve');
+			await callHook(plugin, 'buildStart', context);
+
+			await callHook(plugin, 'watchChange', context, childFile, {
+				event: 'update',
+			});
+
+			expect(count('unrecognized statement(s)')).toBe(1);
+			expect(count('SQLsmith: 1 known warning(s)')).toBe(1);
+		});
+
+		it('reprints a diagnostic that disappeared and came back', async () => {
+			addRawStatement();
+			const plugin = createPlugin();
+			await configure(plugin, context, 'serve');
+			await callHook(plugin, 'buildStart', context);
+
+			writeFileSync(
+				parentFile,
+				'CREATE TABLE users (id integer PRIMARY KEY);\n',
+			);
+			await callHook(plugin, 'watchChange', context, parentFile, {
+				event: 'update',
+			});
+			expect(count('unrecognized statement(s)')).toBe(1);
+			expect(stderrText()).not.toContain('known warning(s)');
+
+			addRawStatement();
+			await callHook(plugin, 'watchChange', context, parentFile, {
+				event: 'update',
+			});
+			expect(count('unrecognized statement(s)')).toBe(2);
+		});
+
+		it('keeps the known set across a failed rebuild', async () => {
+			addRawStatement();
+			const plugin = createPlugin();
+			await configure(plugin, context, 'serve');
+			await callHook(plugin, 'buildStart', context);
+
+			writeFileSync(childFile, 'CREATE TABLE broken (;\n');
+			await callHook(plugin, 'watchChange', context, childFile, {
+				event: 'update',
+			});
+			expect(reportError).toHaveBeenCalledTimes(1);
+
+			writeFileSync(
+				childFile,
+				'CREATE TABLE posts (id integer PRIMARY KEY, user_id integer REFERENCES users(id));\n',
+			);
+			await callHook(plugin, 'watchChange', context, childFile, {
+				event: 'update',
+			});
+
+			expect(count('unrecognized statement(s)')).toBe(1);
+			expect(count('SQLsmith: 1 known warning(s)')).toBe(1);
+		});
+
+		it('disables deduplication at debug level', async () => {
+			addRawStatement();
+			const plugin = createPlugin('debug');
+			await configure(plugin, context, 'serve');
+			await callHook(plugin, 'buildStart', context);
+
+			await callHook(plugin, 'watchChange', context, childFile, {
+				event: 'update',
+			});
+
+			expect(count('unrecognized statement(s)')).toBe(2);
+			expect(stderrText()).not.toContain('known warning(s)');
+		});
 	});
 
 	// R5-09 / C5-DEBUG

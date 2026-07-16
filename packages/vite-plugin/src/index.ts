@@ -4,8 +4,9 @@ import {
 	FileSystemError,
 	Logger,
 	type LogLevel,
+	type MergeDiagnostic,
 	renderDependencyGraph,
-	renderDiagnostics,
+	renderDiagnostic,
 	renderDiscoveredFiles,
 	renderRecommendedOrder,
 	type SqlDialect,
@@ -36,6 +37,9 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 	});
 	let command: 'build' | 'serve' = 'build';
 	let watchEnabled = options.watch ?? false;
+	// Keys of the last successful plan's diagnostics; a failed rebuild leaves
+	// the set untouched, matching the preserved last-good output.
+	let knownDiagnosticKeys = new Set<string>();
 
 	const isWithinInput = (candidate: string): boolean => {
 		const pathFromInput = relative(input, resolve(candidate));
@@ -49,6 +53,28 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		candidate.toLowerCase().endsWith('.sql') &&
 		isWithinInput(candidate) &&
 		resolve(candidate) !== output;
+
+	const diagnosticKey = (diagnostic: MergeDiagnostic): string =>
+		diagnostic.code === 'EXTERNAL_REFERENCE'
+			? `${diagnostic.code}|${diagnostic.statementKey}|${diagnostic.dependencyKey}`
+			: `${diagnostic.code}|${[...diagnostic.statements].sort().join(' ')}`;
+
+	const renderNewDiagnostics = (diagnostics: readonly MergeDiagnostic[]): void => {
+		if (logger.isLevelEnabled('debug')) {
+			for (const diagnostic of diagnostics) renderDiagnostic(logger, diagnostic);
+			return;
+		}
+		let knownCount = 0;
+		for (const diagnostic of diagnostics) {
+			if (knownDiagnosticKeys.has(diagnosticKey(diagnostic))) knownCount += 1;
+			else renderDiagnostic(logger, diagnostic);
+		}
+		if (knownCount > 0) {
+			logger.warn(
+				`SQLsmith: ${knownCount} known warning(s) — set logLevel: 'debug' to see all`,
+			);
+		}
+	};
 
 	const writeAtomically = (content: string): void => {
 		const temporaryOutput = `${output}.${process.pid}.tmp`;
@@ -79,7 +105,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 			renderRecommendedOrder(logger, plan);
 		}
 
-		renderDiagnostics(logger, plan);
+		renderNewDiagnostics(plan.diagnostics);
 
 		const merged = merger.merge(plan, {
 			addComments: true,
@@ -87,6 +113,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 			separateStatements: true,
 		});
 		writeAtomically(merged);
+		knownDiagnosticKeys = new Set(plan.diagnostics.map(diagnosticKey));
 		logger.success(`SQLsmith: Schema updated -> ${output}`);
 	};
 
