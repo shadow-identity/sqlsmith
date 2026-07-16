@@ -14,7 +14,7 @@ import {
  * Validate log level option
  */
 export const validateLogLevel = (value: string): LogLevel => {
-	const validLevels: LogLevel[] = ['error', 'warn', 'info', 'debug'];
+	const validLevels: LogLevel[] = ['silent', 'error', 'warn', 'info', 'debug'];
 	if (!validLevels.includes(value as LogLevel)) {
 		throw ConfigurationError.invalidOptions('logLevel', value);
 	}

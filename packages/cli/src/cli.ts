@@ -51,7 +51,7 @@ export const createProgram = (): Command => {
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: MergeCommandOptions) => {
@@ -87,7 +87,7 @@ export const createProgram = (): Command => {
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: InfoCommandOptions) => {
@@ -116,7 +116,7 @@ export const createProgram = (): Command => {
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: ValidateCommandOptions) => {

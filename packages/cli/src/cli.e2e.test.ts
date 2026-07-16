@@ -271,6 +271,28 @@ describe('sqlsmith CLI (end-to-end)', () => {
 		});
 	});
 
+	// R5-10 / C5-CLI-SILENT
+	describe('silent log level', () => {
+		it('merges with --log-level silent and emits only SQL', async () => {
+			const { stdout, stderr, exitCode } = await runCli([
+				join(FIXTURES, 'correct/raw_statements'),
+				'--log-level',
+				'silent',
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain('CREATE TABLE');
+			expect(stderr).toBe('');
+		});
+
+		it('advertises silent among the --log-level choices', async () => {
+			const { stdout, exitCode } = await runCli(['--help']);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toMatch(/log-level[\s\S]*?"silent"/);
+		});
+	});
+
 	describe('exit codes', () => {
 		it('exits with 3 for circular dependencies', async () => {
 			const { exitCode, stderr } = await runCli([
