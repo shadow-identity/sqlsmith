@@ -1,5 +1,13 @@
 import { resolve } from 'node:path';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from 'vitest';
 import {
 	createDialectRules,
 	createRelationIdentifier,
@@ -34,7 +42,9 @@ describe('plan renderers', () => {
 		stderrSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('');
 
 	beforeAll(() => {
-		const merger = new SqlMerger({ logger: new Logger({ logLevel: 'silent' }) });
+		const merger = new SqlMerger({
+			logger: new Logger({ logLevel: 'silent' }),
+		});
 		plan = merger.planDirectory(fixture, 'postgresql');
 	});
 
@@ -57,8 +67,14 @@ describe('plan renderers', () => {
 
 	it('renderDiagnostic reports a single external reference diagnostic', () => {
 		const rules = createDialectRules('postgresql');
-		const orders = createRelationIdentifier(unquotedRelationName('orders'), rules);
-		const users = createRelationIdentifier(unquotedRelationName('users'), rules);
+		const orders = createRelationIdentifier(
+			unquotedRelationName('orders'),
+			rules,
+		);
+		const users = createRelationIdentifier(
+			unquotedRelationName('users'),
+			rules,
+		);
 		const diagnostic: MergeDiagnostic = {
 			code: 'EXTERNAL_REFERENCE',
 			message: `External reference: '${orders.display}' depends on '${users.display}' which is not defined in the input files`,

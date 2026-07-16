@@ -31,9 +31,7 @@ export const renderDiscoveredFiles = (
 ): void => {
 	logger.debug(`Discovered ${plan.files.length} SQL file(s):`);
 	for (const file of plan.files) {
-		logger.debug(
-			`  ${file.path} (${file.statements.length} statement(s))`,
-		);
+		logger.debug(`  ${file.path} (${file.statements.length} statement(s))`);
 	}
 };
 

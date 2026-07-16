@@ -59,9 +59,12 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 			? `${diagnostic.code}|${diagnostic.statementKey}|${diagnostic.dependencyKey}`
 			: `${diagnostic.code}|${[...diagnostic.statements].sort().join(' ')}`;
 
-	const renderNewDiagnostics = (diagnostics: readonly MergeDiagnostic[]): void => {
+	const renderNewDiagnostics = (
+		diagnostics: readonly MergeDiagnostic[],
+	): void => {
 		if (logger.isLevelEnabled('debug')) {
-			for (const diagnostic of diagnostics) renderDiagnostic(logger, diagnostic);
+			for (const diagnostic of diagnostics)
+				renderDiagnostic(logger, diagnostic);
 			return;
 		}
 		let knownCount = 0;
