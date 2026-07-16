@@ -480,43 +480,37 @@
 			"id": "T4-CONSTRUCTOR",
 			"caseIds": ["C4-CONSTRUCTOR"],
 			"path": "packages/core/test/public-api.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "The target constructor and removal contract are introduced in stage 4."
+			"status": "executable"
 		},
 		{
 			"id": "T4-SINGLE-PLAN",
 			"caseIds": ["C4-SINGLE-PLAN"],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "MergePlan does not exist before stage 4."
+			"status": "executable"
 		},
 		{
 			"id": "T4-CYCLE",
 			"caseIds": ["C4-CYCLE"],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "The unified planning cycle boundary is created in stage 4."
+			"status": "executable"
 		},
 		{
 			"id": "T4-PRESENTATION",
 			"caseIds": ["C4-PRESENTATION"],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Presentation currently occurs inside parseSqlFiles."
+			"status": "executable"
 		},
 		{
 			"id": "T4-CLI",
 			"caseIds": ["C4-CLI"],
 			"path": "packages/cli/src/cli.e2e.test.ts",
-			"status": "planned",
-			"pendingReason": "CLI commands are migrated to MergePlan in stage 4."
+			"status": "executable"
 		},
 		{
 			"id": "T4-GOLDEN",
 			"caseIds": ["C4-GOLDEN"],
 			"path": "packages/core/test/golden-output.test.ts",
-			"status": "planned",
-			"pendingReason": "The existing golden harness is migrated to MergePlan in stage 4."
+			"status": "executable"
 		},
 		{
 			"id": "T5-SUITE",

@@ -15,10 +15,6 @@
 			"types": "./dist/processors/index.d.ts",
 			"import": "./dist/processors/index.js"
 		},
-		"./services": {
-			"types": "./dist/services/index.d.ts",
-			"import": "./dist/services/index.js"
-		},
 		"./types": {
 			"types": "./dist/types/index.d.ts",
 			"import": "./dist/types/index.js"

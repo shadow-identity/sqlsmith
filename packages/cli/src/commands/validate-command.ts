@@ -1,6 +1,11 @@
 import { resolve } from 'node:path';
-import type { LogLevel } from '@sqlsmith/core';
-import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
+import {
+	Logger,
+	type LogLevel,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
+import { renderDiagnostics, renderValidationSummary } from './renderers.js';
 
 export type ValidateCommandOptions = {
 	dialect: SqlDialect;
@@ -8,25 +13,18 @@ export type ValidateCommandOptions = {
 	allowExternalReferences?: boolean;
 };
 
-/**
- * Validate command implementation - check syntax and dependencies
- */
 export const executeValidateCommand = async (
 	inputPath: string,
 	options: ValidateCommandOptions,
 ): Promise<void> => {
-	const container = new ServiceContainer({
-		loggerOptions: {
-			logLevel: options.logLevel,
-		},
+	const logger = new Logger({ logLevel: options.logLevel });
+	const merger = new SqlMerger({
+		logger,
 		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
+	logger.header('✅ SQL Validator');
 
-	// Resolve input path (already validated by CLI layer)
-	const resolvedInput = resolve(inputPath);
-
-	// Create merger with container
-	const merger = SqlMerger.withContainer(container);
-
-	await merger.validateFiles(resolvedInput, options.dialect);
+	const plan = merger.planDirectory(resolve(inputPath), options.dialect);
+	renderDiagnostics(logger, plan);
+	renderValidationSummary(logger, plan);
 };

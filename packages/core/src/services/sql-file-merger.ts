@@ -1,5 +1,4 @@
 import type { SqlStatement } from '../types/sql-statement.js';
-import type { Logger } from './logger.js';
 
 export interface MergeOptions {
 	addComments?: boolean;
@@ -13,12 +12,6 @@ export interface MergeOptions {
  * file system.
  */
 export class SqlFileMerger {
-	#logger: Logger;
-
-	constructor(logger: Logger) {
-		this.#logger = logger;
-	}
-
 	/**
 	 * Merge SQL statements into a single string
 	 */
@@ -51,11 +44,7 @@ export class SqlFileMerger {
 			blocks.push(block);
 		}
 
-		const mergedContent = blocks.join(separateStatements ? '\n\n' : '\n');
-
-		this.#logMergeResults(statements, mergedContent);
-
-		return mergedContent;
+		return blocks.join(separateStatements ? '\n\n' : '\n');
 	}
 
 	#buildHeader(statements: SqlStatement[]): string {
@@ -95,18 +84,5 @@ export class SqlFileMerger {
 			return content;
 		}
 		return `${content};`;
-	}
-
-	#logMergeResults(statements: SqlStatement[], content: string): void {
-		const uniqueFiles = new Set(statements.map((s) => s.filePath));
-
-		this.#logger.header('📄 SQL Merge Complete', '-');
-		this.#logger.info(`📁 Files processed: ${uniqueFiles.size}`);
-		this.#logger.info(`📋 Statements merged: ${statements.length}`);
-		this.#logger.info(`📝 Total lines: ${content.split('\n').length}`);
-		this.#logger.info(`📊 Characters: ${content.length}`);
-
-		this.#logger.success('Merge successful!');
-		this.#logger.raw('');
 	}
 }

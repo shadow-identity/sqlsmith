@@ -10,6 +10,7 @@ import {
 	ProcessingError,
 	SqlMergerError,
 } from '../types/errors.js';
+import type { DiscoveryOptions } from '../types/merge-plan.js';
 import type {
 	SqlDialect,
 	SqlFile,
@@ -72,6 +73,7 @@ export class SqlFileParser {
 	parseDirectory(
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
+		_discovery: DiscoveryOptions = {},
 	): SqlFile[] {
 		const filePaths = this.findSqlFiles(directoryPath);
 		const sqlFiles: SqlFile[] = [];

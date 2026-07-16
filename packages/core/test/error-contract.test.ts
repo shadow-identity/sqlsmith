@@ -63,7 +63,7 @@ describe('typed error boundary', () => {
 			logger: new Logger({ logLevel: 'error' }),
 		});
 
-		expect(() => merger.parseSqlFiles(missingPath, 'postgresql')).toThrowError(
+		expect(() => merger.planDirectory(missingPath, 'postgresql')).toThrowError(
 			expect.objectContaining({
 				code: ErrorCode.DIRECTORY_NOT_FOUND,
 				context: { path: missingPath },

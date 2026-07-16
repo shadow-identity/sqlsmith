@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { type SqlDialect, SqlMerger } from '../src/sql-merger.js';
 
-// C3-REGRESSION / R3-06
+// C3-REGRESSION / C4-GOLDEN / R3-06 / R4-06
 
 /**
  * Golden-file contract: for every correct scenario with a
@@ -47,11 +47,11 @@ describe('golden output', () => {
 			scenarios.forEach((scenario) => {
 				it(`produces the golden output for ${scenario}`, () => {
 					const merger = new SqlMerger();
-					const files = merger.parseSqlFiles(
+					const plan = merger.planDirectory(
 						resolve(correctDir, scenario),
 						dialect,
 					);
-					const merged = merger.mergeFiles(files, {
+					const merged = merger.merge(plan, {
 						addComments: false,
 						includeHeader: false,
 					});

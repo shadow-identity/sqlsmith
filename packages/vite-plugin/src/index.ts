@@ -13,8 +13,6 @@ export interface SqlsmithPluginOptions {
 }
 
 export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
-	const merger = new SqlMerger();
-
 	// Convert logLevel to logger options
 	const getLogLevel = (logLevel: string = 'normal') => {
 		switch (logLevel) {
@@ -30,6 +28,7 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 	};
 
 	const logger = new Logger({ logLevel: getLogLevel(options.logLevel) });
+	const merger = new SqlMerger({ logger });
 	const isErrorOnly = options.logLevel === 'error';
 	const isSilent = options.logLevel === 'silent';
 	let sqlFiles: string[] = [];
@@ -110,12 +109,12 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 
 		try {
 			const resolvedInput = resolve(options.input);
-			const parsedFiles = merger.parseSqlFiles(
+			const plan = merger.planDirectory(
 				resolvedInput,
 				options.dialect || 'postgresql',
 			);
 
-			const merged = merger.mergeFiles(parsedFiles, {
+			const merged = merger.merge(plan, {
 				addComments: true,
 				includeHeader: true,
 				separateStatements: true,

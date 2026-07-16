@@ -15,8 +15,8 @@ const mergeScenario = (
 	scenario: string,
 	merger = new SqlMerger(),
 ): string => {
-	const files = merger.parseSqlFiles(fixture(dialect, scenario), dialect);
-	return merger.mergeFiles(files, {
+	const plan = merger.planDirectory(fixture(dialect, scenario), dialect);
+	return merger.merge(plan, {
 		addComments: false,
 		includeHeader: false,
 	});
@@ -131,11 +131,11 @@ describe('statement-level merging', () => {
 	describe('generated per-statement comments', () => {
 		it('labels each emitted statement with its source file', () => {
 			const merger = new SqlMerger();
-			const files = merger.parseSqlFiles(
+			const plan = merger.planDirectory(
 				fixture('postgresql', 'correct/interleaved_dependencies'),
 				'postgresql',
 			);
-			const merged = merger.mergeFiles(files); // addComments defaults to true
+			const merged = merger.merge(plan); // addComments defaults to true
 
 			const posY = merged.indexOf('CREATE TABLE y');
 			const posZ = merged.indexOf('CREATE TABLE z');
@@ -170,8 +170,8 @@ describe('statement-level merging', () => {
 			const merger = new SqlMerger();
 
 			try {
-				merger.parseSqlFiles(missingDepPath, 'postgresql');
-				expect.fail('expected parseSqlFiles to throw');
+				merger.planDirectory(missingDepPath, 'postgresql');
+				expect.fail('expected planDirectory to throw');
 			} catch (error) {
 				expect(error).toBeInstanceOf(DependencyError);
 				expect((error as SqlMergerError).code).toBe(
@@ -183,8 +183,8 @@ describe('statement-level merging', () => {
 		it('merges anyway when allowExternalReferences is enabled', () => {
 			const merger = new SqlMerger({ allowExternalReferences: true });
 
-			const files = merger.parseSqlFiles(missingDepPath, 'postgresql');
-			const merged = merger.mergeFiles(files, {
+			const plan = merger.planDirectory(missingDepPath, 'postgresql');
+			const merged = merger.merge(plan, {
 				addComments: false,
 				includeHeader: false,
 			});
@@ -200,7 +200,7 @@ describe('statement-level merging', () => {
 		it('rejects out-of-order statements within a file by default', () => {
 			const merger = new SqlMerger();
 
-			expect(() => merger.parseSqlFiles(badOrderPath, 'postgresql')).toThrow(
+			expect(() => merger.planDirectory(badOrderPath, 'postgresql')).toThrow(
 				'Invalid statement order',
 			);
 		});
@@ -208,8 +208,8 @@ describe('statement-level merging', () => {
 		it('merges out-of-order files correctly when validateSourceOrder is false', () => {
 			const merger = new SqlMerger({ validateSourceOrder: false });
 
-			const files = merger.parseSqlFiles(badOrderPath, 'postgresql');
-			const merged = merger.mergeFiles(files, {
+			const plan = merger.planDirectory(badOrderPath, 'postgresql');
+			const merged = merger.merge(plan, {
 				addComments: false,
 				includeHeader: false,
 			});

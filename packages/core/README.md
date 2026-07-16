@@ -15,18 +15,18 @@ import { SqlMerger } from '@sqlsmith/core';
 
 const merger = new SqlMerger();
 
-// Parse SQL files from directory
-const sqlFiles = merger.parseSqlFiles('./schemas', 'postgresql');
+// Parse, validate, build the graph, and compute the final order once
+const plan = merger.planDirectory('./schemas', 'postgresql');
 
-// Merge files with options
-const merged = merger.mergeFiles(sqlFiles, {
+// Emit without repeating analysis
+const merged = merger.merge(plan, {
   addComments: true,
   includeHeader: true,
-  separateStatements: true,
-  outputPath: 'merged.sql' // Optional: write to file
+  separateStatements: true
 });
 
 console.log(merged); // Merged SQL content
+console.log(plan.diagnostics); // Structured external/raw diagnostics
 ```
 
 ## Features
@@ -42,7 +42,23 @@ console.log(merged); // Merged SQL content
 
 ### SqlMerger
 
-Main class for SQL merging operations.
+Main class for SQL merging operations. `planDirectory` and `planFiles` return
+a readonly `MergePlan` containing files, recognized statements, the dependency
+graph, final statement order, and diagnostics. `merge(plan)` is pure emission.
+
+The constructor accepts normal options plus optional narrow typed dependencies:
+
+```ts
+const merger = new SqlMerger(options, {
+  fileParser,
+  dependencyAnalyzer,
+  topologicalSorter,
+  fileMerger
+})
+```
+
+`ServiceContainer` and the old parse/analyze/validate/merge convenience methods
+were removed; callers render `MergePlan` data at their application boundary.
 
 ### Processors
 
@@ -65,12 +81,13 @@ export interface StatementProcessor {
 
 Note: pre-release change — the `extractStatements` method no longer receives a `dialect` parameter. If you need dialect-specific behavior in a custom processor, pass it via the constructor or configuration when creating the processor.
 
-### Services
+### Extension points
 
-- `DependencyAnalyzer` - Analyzes statement dependencies
-- `TopologicalSorter` - Sorts statements by dependencies
-- `SqlFileParser` - Parses SQL files and extracts statements
+Custom statement processors (`new SqlMerger({ processors: [...] })`) and
+`Logger` remain public. Pipeline collaborators
+are injected structurally through `SqlMergerDependencies`; concrete internal
+analyzer/sorter/parser/emitter classes are not part of the package root API.
 
 ## License
 
-MIT 
+MIT

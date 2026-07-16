@@ -265,6 +265,10 @@ build/test/Biome и traceability guard зелёные.
 
 ## Этап 4 — удалить ServiceContainer и ввести единый MergePlan pipeline
 
+**Статус: completed.** Все C4-трассы executable; core/CLI consumers и Vite
+call site используют `planDirectory → merge(plan)`, container-centric API и
+presentation из core удалены.
+
 ### Целевой публичный API
 
 ```ts

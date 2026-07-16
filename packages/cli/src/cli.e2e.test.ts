@@ -145,24 +145,29 @@ describe('sqlsmith CLI (end-to-end)', () => {
 	});
 
 	describe('info and validate commands', () => {
+		// C4-CLI / R4-02 / R4-04 / R4-05
 		it('info reports to stderr, not stdout', async () => {
-			const { stdout, exitCode } = await runCli([
+			const { stdout, stderr, exitCode } = await runCli([
 				'info',
 				join(FIXTURES, 'correct/single_foreign_keys'),
 			]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout.trim()).toBe('');
+			expect(stderr).toContain('Dependency Graph');
+			expect(stderr).toContain('Recommended execution order');
 		});
 
 		it('validate reports to stderr, not stdout', async () => {
-			const { stdout, exitCode } = await runCli([
+			const { stdout, stderr, exitCode } = await runCli([
 				'validate',
 				join(FIXTURES, 'correct/base_tables'),
 			]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout.trim()).toBe('');
+			expect(stderr).toContain('SQL Validator');
+			expect(stderr).toContain('Ready for merging');
 		});
 	});
 
@@ -205,13 +210,24 @@ describe('sqlsmith CLI (end-to-end)', () => {
 		});
 
 		it('merges with --allow-external-references', async () => {
-			const { stdout, exitCode } = await runCli([
+			const { stdout, stderr, exitCode } = await runCli([
 				join(FIXTURES, 'invalid/missing_dependency'),
 				'--allow-external-references',
 			]);
 
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain('CREATE TABLE orders');
+			expect(stderr).toContain('External reference');
+		});
+
+		it('renders raw passthrough diagnostics at the CLI boundary', async () => {
+			const { stdout, stderr, exitCode } = await runCli([
+				join(FIXTURES, 'correct/raw_statements'),
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain('CREATE INDEX idx_users_name');
+			expect(stderr).toContain('unrecognized statement(s)');
 		});
 	});
 

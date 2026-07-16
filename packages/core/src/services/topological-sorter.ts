@@ -1,117 +1,96 @@
 import type { DependencyGraph } from '../types/dependency-graph.js';
-import { ProcessingError } from '../types/errors.js';
+import { DependencyError, ProcessingError } from '../types/errors.js';
 import type { SqlStatement } from '../types/sql-statement.js';
-import type { Logger } from './logger.js';
 
 export class TopologicalSorter {
-	#logger: Logger;
-
-	constructor(logger: Logger) {
-		this.#logger = logger;
-	}
-
-	/**
-	 * Sort SQL statements using Kahn's algorithm
-	 */
+	/** Sort statements with Kahn's algorithm and own the public cycle boundary. */
 	sortStatements(
 		statements: SqlStatement[],
 		graph: DependencyGraph<string>,
 	): SqlStatement[] {
-		// Create maps for quick lookups
-		const statementMap = new Map<string, SqlStatement>();
-		const fileMap = new Map<string, string>();
-
-		for (const statement of statements) {
-			statementMap.set(statement.name, statement);
-			fileMap.set(statement.name, statement.filePath);
-		}
-
-		// Kahn's algorithm implementation
+		const statementMap = new Map(
+			statements.map((statement) => [statement.name, statement]),
+		);
 		const inDegree = new Map<string, number>();
 		const queue: string[] = [];
 
-		// Initialize in-degree for all nodes
 		for (const node of graph.nodes) {
-			const dependencies = graph.edges.get(node) || new Set();
-			// Exclude self-references from in-degree calculation (hierarchical structures)
-			const nonSelfDependencies = Array.from(dependencies).filter(
-				(dep) => dep !== node,
-			);
-			inDegree.set(node, nonSelfDependencies.length);
-
-			// Add nodes with no dependencies to the queue
-			if (nonSelfDependencies.length === 0) {
-				queue.push(node);
-			}
+			const dependencies = graph.edges.get(node) ?? new Set();
+			const degree = [...dependencies].filter(
+				(dependency) => dependency !== node,
+			).length;
+			inDegree.set(node, degree);
+			if (degree === 0) queue.push(node);
 		}
 
 		const sortedNames: string[] = [];
-
-		// Process the queue
 		while (queue.length > 0) {
 			const current = queue.shift();
-			if (current === undefined) {
-				break;
-			}
+			if (current === undefined) break;
 			sortedNames.push(current);
 
-			// Update in-degree for all dependents
-			const dependents = graph.reversedEdges.get(current) || new Set();
-			for (const dependent of dependents) {
-				// Skip self-references in dependency processing
-				if (dependent === current) {
-					continue;
-				}
-
-				const currentDegree = inDegree.get(dependent) || 0;
-				const newDegree = currentDegree - 1;
-				inDegree.set(dependent, newDegree);
-
-				// If this statement now has no more dependencies, add it to queue
-				if (newDegree === 0) {
-					queue.push(dependent);
-				}
+			for (const dependent of graph.reversedEdges.get(current) ?? new Set()) {
+				if (dependent === current) continue;
+				const degree = (inDegree.get(dependent) ?? 0) - 1;
+				inDegree.set(dependent, degree);
+				if (degree === 0) queue.push(dependent);
 			}
 		}
 
-		// Verify we processed all nodes
 		if (sortedNames.length !== graph.nodes.size) {
+			const remaining = new Set(
+				[...graph.nodes].filter((node) => !sortedNames.includes(node)),
+			);
+			const cycle = this.#findCycle(graph, remaining);
+			if (cycle) throw DependencyError.circularDependency([cycle]);
 			throw ProcessingError.internalError(
 				'Topological sort did not process every graph node',
 			);
 		}
 
-		// Convert sorted names back to SQL statements
-		const sortedStatements: SqlStatement[] = [];
-
-		for (const name of sortedNames) {
+		return sortedNames.map((name) => {
 			const statement = statementMap.get(name);
 			if (!statement) {
-				// The graph is built from the same statement set, so every node
-				// must resolve; a miss means the two inputs diverged.
 				throw ProcessingError.internalError(
 					`Graph node '${name}' has no matching statement`,
 				);
 			}
-			sortedStatements.push(statement);
-		}
-
-		this.#logSortResults(sortedStatements);
-
-		return sortedStatements;
+			return statement;
+		});
 	}
 
-	#logSortResults(sortedStatements: SqlStatement[]): void {
-		this.#logger.header('🔄 Topological Sort Result', '-');
+	#findCycle(
+		graph: DependencyGraph<string>,
+		candidates: ReadonlySet<string>,
+	): string[] | undefined {
+		const state = new Map<string, 'visiting' | 'visited'>();
+		const path: string[] = [];
 
-		sortedStatements.forEach((statement, index) => {
-			const fileName = statement.filePath.split('/').pop();
-			const type = statement.type.toUpperCase();
-			this.#logger.info(
-				`${index + 1}. ${fileName} (${type}: ${statement.name})`,
-			);
-		});
+		const visit = (node: string): string[] | undefined => {
+			state.set(node, 'visiting');
+			path.push(node);
 
-		this.#logger.raw('');
+			for (const dependency of graph.edges.get(node) ?? new Set()) {
+				if (dependency === node || !candidates.has(dependency)) continue;
+				if (state.get(dependency) === 'visiting') {
+					return path.slice(path.indexOf(dependency)).concat(dependency);
+				}
+				if (!state.has(dependency)) {
+					const cycle = visit(dependency);
+					if (cycle) return cycle;
+				}
+			}
+
+			path.pop();
+			state.set(node, 'visited');
+			return undefined;
+		};
+
+		for (const node of candidates) {
+			if (state.has(node)) continue;
+			const cycle = visit(node);
+			if (cycle) return cycle;
+		}
+		return undefined;
 	}
 }

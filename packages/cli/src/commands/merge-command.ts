@@ -3,10 +3,11 @@ import { resolve } from 'node:path';
 import type { LogLevel } from '@sqlsmith/core';
 import {
 	FileSystemError,
-	ServiceContainer,
+	Logger,
 	type SqlDialect,
 	SqlMerger,
 } from '@sqlsmith/core';
+import { renderDiagnostics } from './renderers.js';
 
 export type MergeCommandOptions = {
 	output?: string;
@@ -16,33 +17,21 @@ export type MergeCommandOptions = {
 	allowExternalReferences?: boolean;
 };
 
-/**
- * Merge command implementation. The core merger computes the merged SQL;
- * this command delivers it — to the output file or to stdout.
- */
 export const executeMergeCommand = async (
 	inputPath: string,
 	options: MergeCommandOptions,
 ): Promise<void> => {
-	const container = new ServiceContainer({
-		loggerOptions: {
-			logLevel: options.logLevel,
-		},
+	const logger = new Logger({ logLevel: options.logLevel });
+	const merger = new SqlMerger({
+		logger,
 		validateSourceOrder: options.validateSourceOrder ?? true,
 		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
+	logger.info('🔧 SQL Merger');
 
-	const logger = container.getLogger();
-
-	logger.info(`🔧 SQL Merger`);
-
-	const resolvedInput = resolve(inputPath);
-
-	const merger = SqlMerger.withContainer(container);
-
-	const sqlFiles = merger.parseSqlFiles(resolvedInput, options.dialect);
-
-	const merged = merger.mergeFiles(sqlFiles, {
+	const plan = merger.planDirectory(resolve(inputPath), options.dialect);
+	renderDiagnostics(logger, plan);
+	const merged = merger.merge(plan, {
 		addComments: true,
 		includeHeader: true,
 		separateStatements: true,

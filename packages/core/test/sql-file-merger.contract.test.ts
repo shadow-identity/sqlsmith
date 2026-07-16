@@ -12,7 +12,7 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 
 /**
- * Core contract: merging is a pure computation. `mergeFiles` returns the
+ * Core contract: merging is a pure computation. `merge(plan)` returns the
  * merged SQL as a string and must not write to stdout or to the file system —
  * delivering the result is the caller's (CLI, vite-plugin) responsibility.
  */
@@ -29,13 +29,13 @@ describe('SqlFileMerger side-effect contract', () => {
 
 	it('returns the merged SQL without writing to stdout', () => {
 		const merger = new SqlMerger();
-		const sqlFiles = merger.parseSqlFiles(fixturePath, 'postgresql');
+		const plan = merger.planDirectory(fixturePath, 'postgresql');
 
 		const stdoutSpy = vi
 			.spyOn(process.stdout, 'write')
 			.mockImplementation(() => true);
 
-		const merged = merger.mergeFiles(sqlFiles);
+		const merged = merger.merge(plan);
 
 		expect(merged).toContain('CREATE TABLE');
 		expect(stdoutSpy).not.toHaveBeenCalled();
@@ -43,10 +43,10 @@ describe('SqlFileMerger side-effect contract', () => {
 
 	it('never writes to the file system', () => {
 		const merger = new SqlMerger();
-		const sqlFiles = merger.parseSqlFiles(fixturePath, 'postgresql');
+		const plan = merger.planDirectory(fixturePath, 'postgresql');
 
 		vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-		merger.mergeFiles(sqlFiles);
+		merger.merge(plan);
 
 		expect(vi.mocked(writeFileSync)).not.toHaveBeenCalled();
 	});

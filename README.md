@@ -209,18 +209,20 @@ import { SqlMerger } from 'sqlsmith';
 
 const merger = new SqlMerger();
 
-// Parse SQL files from directory
-const sqlFiles = merger.parseSqlFiles('./schemas', 'postgresql');
+// Parse, validate, build one graph, and compute one stable order
+const plan = merger.planDirectory('./schemas', 'postgresql');
 
-// Merge files with options
-const merged = merger.mergeFiles(sqlFiles, {
+// Pure emission: merge never repeats analysis
+const merged = merger.merge(plan, {
   addComments: true,
   includeHeader: true,
-  separateStatements: true,
-  outputPath: 'merged.sql' // Optional: write to file
+  separateStatements: true
 });
 
 console.log(merged); // Merged SQL content
+
+// The same value powers custom info/validation UIs
+console.log(plan.files, plan.graph, plan.orderedStatements, plan.diagnostics);
 ```
 
 ## Examples
@@ -466,8 +468,18 @@ $ sqlsmith ./nonexistent
 | `includeHeader` | `true` | Include generation timestamp and statement order |
 | `separateStatements` | `true` | Add blank lines between statements |
 
-`mergeFiles` returns the merged SQL as a string; writing it to a file or stdout
-is the caller's responsibility (the CLI handles this via `--output`).
+`merge(plan)` returns the merged SQL as a string; writing it to a file or
+stdout is the caller's responsibility (the CLI handles this via `--output`).
+
+### Programmatic API migration
+
+The container-centric API has been removed. Construct `SqlMerger` directly
+with options and optional narrow dependencies, then use
+`planDirectory`/`planFiles` followed by `merge(plan)`. Removed APIs:
+`ServiceContainer`, `ServiceConfiguration`, `withContainer`, `getContainer`,
+`parseSqlFiles`, `mergeFiles`, `analyzeDependencies`, and `validateFiles`.
+Presentation belongs to the caller; core exposes structured `MergePlan`
+diagnostics and does not print progress, graphs, or exceptions.
 
 ### Output Formats
 
