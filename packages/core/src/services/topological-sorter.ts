@@ -1,4 +1,5 @@
 import type { DependencyGraph } from '../types/dependency-graph.js';
+import { ProcessingError } from '../types/errors.js';
 import type { SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
 
@@ -75,8 +76,8 @@ export class TopologicalSorter {
 
 		// Verify we processed all nodes
 		if (sortedNames.length !== graph.nodes.size) {
-			throw new Error(
-				'Topological sort failed: not all nodes were processed (unexpected cycle detected)',
+			throw ProcessingError.internalError(
+				'Topological sort did not process every graph node',
 			);
 		}
 
@@ -88,8 +89,8 @@ export class TopologicalSorter {
 			if (!statement) {
 				// The graph is built from the same statement set, so every node
 				// must resolve; a miss means the two inputs diverged.
-				throw new Error(
-					`Internal error: graph node '${name}' has no matching statement`,
+				throw ProcessingError.internalError(
+					`Graph node '${name}' has no matching statement`,
 				);
 			}
 			sortedStatements.push(statement);

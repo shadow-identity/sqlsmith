@@ -1,7 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LogLevel } from '@sqlsmith/core';
-import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
+import {
+	FileSystemError,
+	ServiceContainer,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 
 export type MergeCommandOptions = {
 	output?: string;
@@ -48,8 +53,9 @@ export const executeMergeCommand = async (
 			writeFileSync(options.output, merged, 'utf-8');
 			logger.info(`💾 Output written to: ${options.output}`);
 		} catch (error) {
-			throw new Error(
-				`Failed to write output file ${options.output}: ${error}`,
+			throw FileSystemError.fileWriteFailed(
+				options.output,
+				error instanceof Error ? error : new Error(String(error)),
 			);
 		}
 	} else {

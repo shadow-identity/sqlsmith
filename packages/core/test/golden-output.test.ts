@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { type SqlDialect, SqlMerger } from '../src/sql-merger.js';
 
+// C3-REGRESSION / R3-06
+
 /**
  * Golden-file contract: for every correct scenario with a
  * `<scenario>.expected.sql` next to it, the merged output must contain

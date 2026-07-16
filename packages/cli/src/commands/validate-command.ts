@@ -22,19 +22,11 @@ export const executeValidateCommand = async (
 		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
 
-	const logger = container.getLogger();
-
 	// Resolve input path (already validated by CLI layer)
 	const resolvedInput = resolve(inputPath);
 
 	// Create merger with container
 	const merger = SqlMerger.withContainer(container);
 
-	try {
-		await merger.validateFiles(resolvedInput, options.dialect);
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error(`Validation failed: ${errorMessage}`);
-		throw error;
-	}
+	await merger.validateFiles(resolvedInput, options.dialect);
 };

@@ -4,6 +4,12 @@ import type { AST } from 'node-sql-parser';
 import pkg from 'node-sql-parser';
 
 import type { StatementProcessor } from '../processors/base-processor.js';
+import {
+	FileSystemError,
+	ParsingError,
+	ProcessingError,
+	SqlMergerError,
+} from '../types/errors.js';
 import type {
 	SqlDialect,
 	SqlFile,
@@ -32,6 +38,10 @@ export class SqlFileParser {
 		const sqlFiles: string[] = [];
 
 		try {
+			const directoryStats = statSync(directoryPath);
+			if (!directoryStats.isDirectory()) {
+				throw FileSystemError.notDirectory(directoryPath);
+			}
 			const entries = readdirSync(directoryPath);
 
 			for (const entry of entries) {
@@ -44,8 +54,15 @@ export class SqlFileParser {
 			}
 
 			return sqlFiles.sort(); // Sort for consistent ordering
-		} catch (error) {
-			throw new Error(`Failed to scan directory ${directoryPath}: ${error}`);
+		} catch (error: unknown) {
+			if (error instanceof SqlMergerError) throw error;
+			if (this.#isNodeError(error) && error.code === 'ENOENT') {
+				throw FileSystemError.directoryNotFound(directoryPath);
+			}
+			throw FileSystemError.directoryNotReadable(
+				directoryPath,
+				this.#toError(error),
+			);
 		}
 	}
 
@@ -77,7 +94,15 @@ export class SqlFileParser {
 	 * verbatim, anchored to their file neighbours.
 	 */
 	parseFile(filePath: string, dialect: SqlDialect = 'postgresql'): SqlFile {
-		const content = readFileSync(filePath, 'utf-8');
+		let content: string;
+		try {
+			content = readFileSync(filePath, 'utf-8');
+		} catch (error: unknown) {
+			if (this.#isNodeError(error) && error.code === 'ENOENT') {
+				throw FileSystemError.fileNotFound(filePath);
+			}
+			throw FileSystemError.fileReadFailed(filePath, this.#toError(error));
+		}
 
 		if (!content.trim()) {
 			return {
@@ -98,23 +123,28 @@ export class SqlFileParser {
 			try {
 				({ ast } = this.#parser.parse(normalized, { database: dialect }));
 			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : String(error);
-				throw new Error(
-					`Failed to parse file ${filePath}: statement starting at line ${chunk.startLine}: ${message}`,
+				throw ParsingError.invalidSqlSyntax(
+					filePath,
+					chunk.startLine,
+					this.#toError(error),
 				);
 			}
 
 			const nodes = Array.isArray(ast) ? ast : [ast];
 			if (nodes.length !== 1) {
-				throw new Error(
-					`Failed to parse file ${filePath}: statement starting at line ${chunk.startLine} unexpectedly parsed into ${nodes.length} statements`,
+				throw ParsingError.parsingFailed(
+					filePath,
+					chunk.startLine,
+					new Error(
+						`Expected one AST node but parsed ${nodes.length} statements`,
+					),
 				);
 			}
 			const node = nodes[0];
 			astNodes.push(node);
 
 			const statement =
-				this.#extractRecognizedStatement(node, filePath) ??
+				this.#extractRecognizedStatement(node, filePath, chunk.startLine) ??
 				this.#buildRawStatement(node, filePath, index);
 
 			statement.content = (chunk.leadingTrivia + chunk.text).trim();
@@ -134,14 +164,33 @@ export class SqlFileParser {
 	#extractRecognizedStatement(
 		node: AST,
 		filePath: string,
+		lineNumber: number,
 	): SqlStatement | undefined {
 		for (const processor of this.#processors) {
-			const extracted = processor.extractStatements(node, filePath);
+			let extracted: SqlStatement[];
+			try {
+				extracted = processor.extractStatements(node, filePath);
+			} catch (error: unknown) {
+				if (error instanceof SqlMergerError) throw error;
+				throw ProcessingError.processorError(
+					processor.constructor.name,
+					this.#toError(error),
+					{ filePath, lineNumber },
+				);
+			}
 			if (extracted.length > 0) {
 				return extracted[0];
 			}
 		}
 		return undefined;
+	}
+
+	#isNodeError(error: unknown): error is NodeJS.ErrnoException {
+		return error instanceof Error && 'code' in error;
+	}
+
+	#toError(error: unknown): Error {
+		return error instanceof Error ? error : new Error(String(error));
 	}
 
 	#buildRawStatement(node: AST, filePath: string, index: number): SqlStatement {

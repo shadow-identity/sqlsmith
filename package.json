@@ -6,6 +6,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "pnpm -r build",
+		"check:refactoring-plan": "node scripts/check-refactoring-plan.mjs",
+		"check:refactoring-plan:complete": "node scripts/check-refactoring-plan.mjs --require-executable",
 		"test": "pnpm build && pnpm -r test",
 		"clean": "pnpm -r exec rm -rf dist",
 		"dev:cli": "pnpm --filter @sqlsmith/cli dev",

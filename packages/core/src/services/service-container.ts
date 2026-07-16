@@ -4,7 +4,6 @@ import { CreateTableProcessor } from '../processors/create-table-processor.js';
 import { CreateViewProcessor } from '../processors/create-view-processor.js';
 import type { SqlDialect } from '../types/sql-statement.js';
 import { DependencyAnalyzer } from './dependency-analyzer.js';
-import { ErrorHandler } from './error-handler.js';
 import { FileSystemValidator } from './file-system-validator.js';
 import type { LoggerOptions } from './logger.js';
 import { Logger } from './logger.js';
@@ -62,13 +61,6 @@ export class ServiceContainer {
 			'logger',
 			() => new Logger(this.#configuration.loggerOptions),
 		);
-	}
-
-	/**
-	 * Get error handler instance
-	 */
-	getErrorHandler(): ErrorHandler {
-		return this.get('errorHandler', () => new ErrorHandler(this.getLogger()));
 	}
 
 	/**

@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FileSystemValidator, type LogLevel } from '@sqlsmith/core';
+import {
+	ConfigurationError,
+	ErrorCode,
+	FileSystemValidator,
+	type LogLevel,
+} from '@sqlsmith/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getVersion, prepareContext, validateLogLevel } from './utils';
 
@@ -28,9 +33,16 @@ describe('validateLogLevel', () => {
 	);
 
 	it('should throw an error for an invalid log level', () => {
-		expect(() => validateLogLevel('invalid')).toThrow(
-			'Invalid log level: invalid. Must be one of: error, warn, info, debug',
-		);
+		try {
+			validateLogLevel('invalid');
+			expect.unreachable('validateLogLevel should reject an invalid value');
+		} catch (error) {
+			expect(error).toBeInstanceOf(ConfigurationError);
+			expect(error).toMatchObject({
+				code: ErrorCode.INVALID_OPTIONS,
+				context: { optionName: 'logLevel', value: 'invalid' },
+			});
+		}
 	});
 });
 
@@ -100,7 +112,7 @@ describe('prepareContext', () => {
 			logLevel: 'invalid' as LogLevel,
 		};
 		expect(() => prepareContext('another/input', options)).toThrow(
-			'Invalid log level: invalid',
+			ConfigurationError,
 		);
 	});
 });

@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Logger } from '../src/services/logger.js';
 import { ServiceContainer } from '../src/services/service-container.js';
 import { type SqlDialect, SqlMerger } from '../src/sql-merger.js';
-import { DependencyError, FileSystemError } from '../src/types/errors.js';
+import {
+	DependencyError,
+	ErrorCode,
+	FileSystemError,
+} from '../src/types/errors.js';
 
 describe('SqlMerger', () => {
 	// Test dialects with their corresponding fixture directories
@@ -452,10 +456,16 @@ describe('SqlMerger', () => {
 		it('should throw error for missing directories', () => {
 			const nonExistentPath = '/absolutely/non/existent/path';
 
-			// The actual implementation wraps the error, so we check for the error message pattern
-			expect(() => {
+			try {
 				merger.parseSqlFiles(nonExistentPath, 'postgresql');
-			}).toThrow(/Failed to scan directory.*ENOENT/);
+				expect.unreachable('parseSqlFiles should reject a missing directory');
+			} catch (error) {
+				expect(error).toBeInstanceOf(FileSystemError);
+				expect(error).toMatchObject({
+					code: ErrorCode.DIRECTORY_NOT_FOUND,
+					context: { path: nonExistentPath },
+				});
+			}
 		});
 
 		it('should throw DependencyError for circular dependencies', () => {

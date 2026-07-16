@@ -1,5 +1,12 @@
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +43,9 @@ const runCli = async (args: string[]): Promise<CliResult> => {
 	}
 };
 
+const countOccurrences = (text: string, needle: string): number =>
+	text.split(needle).length - 1;
+
 const LOG_MARKERS = [
 	'🔍',
 	'✅',
@@ -56,6 +66,9 @@ const LOG_MARKERS = [
  */
 describe('sqlsmith CLI (end-to-end)', () => {
 	let scratchDir: string;
+	let emptyDir: string;
+	let malformedDir: string;
+	let notDirectory: string;
 
 	beforeAll(() => {
 		if (!existsSync(CLI)) {
@@ -64,6 +77,17 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			);
 		}
 		scratchDir = mkdtempSync(join(tmpdir(), 'sqlsmith-e2e-'));
+		emptyDir = join(scratchDir, 'empty');
+		malformedDir = join(scratchDir, 'malformed');
+		notDirectory = join(scratchDir, 'not-a-directory.sql');
+		mkdirSync(emptyDir);
+		mkdirSync(malformedDir);
+		writeFileSync(notDirectory, 'CREATE TABLE valid (id int);\n', 'utf8');
+		writeFileSync(
+			join(malformedDir, 'broken.sql'),
+			'CREATE TABLE valid (id int);\n\nCREATE TABLE broken (;\n',
+			'utf8',
+		);
 	});
 
 	afterAll(() => {
@@ -201,13 +225,64 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			expect(stderr).toContain('Circular');
 		});
 
-		it('exits non-zero for a missing input directory', async () => {
-			const { exitCode, stdout } = await runCli([
+		it('exits with 2 for a missing input directory', async () => {
+			const { exitCode, stdout, stderr } = await runCli([
 				join(FIXTURES, 'does_not_exist'),
 			]);
 
-			expect(exitCode).not.toBe(0);
+			expect(exitCode).toBe(2);
 			expect(stdout.trim()).toBe('');
+			expect(countOccurrences(stderr, '[DIRECTORY_NOT_FOUND]')).toBe(1);
+		});
+
+		// C3-LOG-ONCE / C3-EXIT-MATRIX / R3-03 / R3-04 / R3-05
+		it.each([
+			{
+				name: 'malformed SQL',
+				args: () => [malformedDir],
+				exitCode: 1,
+				sentinel: '[INVALID_SQL_SYNTAX]',
+			},
+			{
+				name: 'empty input directory',
+				args: () => [emptyDir],
+				exitCode: 2,
+				sentinel: '[NO_SQL_FILES]',
+			},
+			{
+				name: 'input path that is not a directory',
+				args: () => [notDirectory],
+				exitCode: 2,
+				sentinel: '[NOT_A_DIRECTORY]',
+			},
+			{
+				name: 'output write failure',
+				args: () => [join(FIXTURES, 'correct/base_tables'), '-o', scratchDir],
+				exitCode: 2,
+				sentinel: '[FILE_WRITE_FAILED]',
+			},
+			{
+				name: 'invalid source order',
+				args: () => [join(FIXTURES, 'invalid/bad_statement_order')],
+				exitCode: 3,
+				sentinel: '[INVALID_STATEMENT_ORDER]',
+			},
+			{
+				name: 'invalid dialect',
+				args: () => [
+					join(FIXTURES, 'correct/base_tables'),
+					'--dialect',
+					'oracle',
+				],
+				exitCode: 4,
+				sentinel: '[INVALID_OPTIONS]',
+			},
+		])('$name has one boundary diagnostic', async (testCase) => {
+			const { exitCode, stdout, stderr } = await runCli(testCase.args());
+
+			expect(exitCode).toBe(testCase.exitCode);
+			expect(stdout).toBe('');
+			expect(countOccurrences(stderr, testCase.sentinel)).toBe(1);
 		});
 	});
 });

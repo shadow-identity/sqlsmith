@@ -1,5 +1,4 @@
 import type { DependencyAnalyzer } from './services/dependency-analyzer.js';
-import type { ErrorHandler } from './services/error-handler.js';
 import type { Logger } from './services/logger.js';
 import type { ServiceConfiguration } from './services/service-container.js';
 import { ServiceContainer } from './services/service-container.js';
@@ -39,7 +38,6 @@ export class SqlMerger {
 	#topologicalSorter: TopologicalSorter;
 	#fileMerger: SqlFileMerger;
 	#logger: Logger;
-	#errorHandler: ErrorHandler;
 
 	constructor(options: SqlMergerOptions = {}, container?: ServiceContainer) {
 		if (container) {
@@ -59,7 +57,6 @@ export class SqlMerger {
 
 		// Initialize services through dependency injection
 		this.#logger = options.logger ?? this.#container.getLogger();
-		this.#errorHandler = this.#container.getErrorHandler();
 		this.#dependencyAnalyzer = this.#container.getDependencyAnalyzer();
 		this.#topologicalSorter = this.#container.getTopologicalSorter();
 		this.#fileMerger = this.#container.getSqlFileMerger();
@@ -81,66 +78,59 @@ export class SqlMerger {
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
 	): SqlFile[] {
-		return this.#errorHandler.wrapWithErrorHandling(() => {
-			this.#logger.info(`🔍 Parsing SQL files from: ${directoryPath}`);
-			this.#logger.info(`🗃️  Dialect: ${dialect}`);
+		this.#logger.info(`🔍 Parsing SQL files from: ${directoryPath}`);
+		this.#logger.info(`🗃️  Dialect: ${dialect}`);
+		this.#logger.info(
+			`⚙️  Processors: ${this.#fileParser.getSupportedTypes().join(', ')}`,
+		);
+
+		const sqlFiles = this.#fileParser.parseDirectory(directoryPath, dialect);
+
+		if (sqlFiles.length === 0) {
+			throw FileSystemError.noSqlFiles(directoryPath);
+		}
+
+		const allStatements: SqlStatement[] = [];
+		for (const file of sqlFiles) {
+			allStatements.push(...file.statements);
+		}
+
+		this.#logger.success(`Successfully processed ${sqlFiles.length} SQL files`);
+		this.#logger.info(`📋 Found ${allStatements.length} statements:`);
+
+		const statementCounts = new Map<string, number>();
+		for (const stmt of allStatements) {
+			statementCounts.set(stmt.type, (statementCounts.get(stmt.type) || 0) + 1);
+		}
+
+		for (const [type, count] of statementCounts) {
 			this.#logger.info(
-				`⚙️  Processors: ${this.#fileParser.getSupportedTypes().join(', ')}`,
+				`  - ${count} ${type.toUpperCase()} statement${count > 1 ? 's' : ''}`,
 			);
+		}
 
-			const sqlFiles = this.#fileParser.parseDirectory(directoryPath, dialect);
+		this.#dependencyAnalyzer.validateNoDuplicateNames(allStatements);
 
-			if (sqlFiles.length === 0) {
-				throw FileSystemError.noSqlFiles(directoryPath);
-			}
+		this.#logger.info('\n🔧 Building dependency graph...');
+		const graph = this.#dependencyAnalyzer.buildStatementGraph(allStatements);
 
-			const allStatements: SqlStatement[] = [];
-			for (const file of sqlFiles) {
-				allStatements.push(...file.statements);
-			}
+		const config = this.#container.getConfiguration();
+		if (config.validateSourceOrder) {
+			this.#validateStatementOrderWithinFiles(sqlFiles);
+		}
 
-			this.#logger.success(
-				`Successfully processed ${sqlFiles.length} SQL files`,
-			);
-			this.#logger.info(`📋 Found ${allStatements.length} statements:`);
+		const cycles = this.#dependencyAnalyzer.detectCycles(graph);
+		if (cycles.length > 0) {
+			throw DependencyError.circularDependency(cycles);
+		}
 
-			const statementCounts = new Map<string, number>();
-			for (const stmt of allStatements) {
-				statementCounts.set(
-					stmt.type,
-					(statementCounts.get(stmt.type) || 0) + 1,
-				);
-			}
+		this.#dependencyAnalyzer.visualizeDependencyGraph(
+			graph,
+			allStatements,
+			cycles,
+		);
 
-			for (const [type, count] of statementCounts) {
-				this.#logger.info(
-					`  - ${count} ${type.toUpperCase()} statement${count > 1 ? 's' : ''}`,
-				);
-			}
-
-			this.#dependencyAnalyzer.validateNoDuplicateNames(allStatements);
-
-			this.#logger.info('\n🔧 Building dependency graph...');
-			const graph = this.#dependencyAnalyzer.buildStatementGraph(allStatements);
-
-			const config = this.#container.getConfiguration();
-			if (config.validateSourceOrder) {
-				this.#validateStatementOrderWithinFiles(sqlFiles);
-			}
-
-			const cycles = this.#dependencyAnalyzer.detectCycles(graph);
-			if (cycles.length > 0) {
-				throw DependencyError.circularDependency(cycles);
-			}
-
-			this.#dependencyAnalyzer.visualizeDependencyGraph(
-				graph,
-				allStatements,
-				cycles,
-			);
-
-			return sqlFiles;
-		}, 'parseSqlFiles')();
+		return sqlFiles;
 	}
 
 	/**
@@ -150,9 +140,7 @@ export class SqlMerger {
 		filePath: string,
 		dialect: SqlDialect = 'postgresql',
 	): SqlFile {
-		return this.#errorHandler.wrapWithErrorHandling(() => {
-			return this.#fileParser.parseFile(filePath, dialect);
-		}, 'parseSingleFile')();
+		return this.#fileParser.parseFile(filePath, dialect);
 	}
 
 	/**
@@ -162,40 +150,38 @@ export class SqlMerger {
 	 * woven back in next to their in-file neighbours.
 	 */
 	mergeFiles(files: SqlFile[], options: MergeOptions = {}): string {
-		return this.#errorHandler.wrapWithErrorHandling(() => {
-			if (files.length === 0) {
-				return '';
-			}
+		if (files.length === 0) {
+			return '';
+		}
 
-			const allStatements: SqlStatement[] = [];
-			for (const file of files) {
-				allStatements.push(...file.statements);
-			}
+		const allStatements: SqlStatement[] = [];
+		for (const file of files) {
+			allStatements.push(...file.statements);
+		}
 
-			const recognized = allStatements.filter((s) => s.type !== 'raw');
-			const rawStatements = allStatements.filter((s) => s.type === 'raw');
+		const recognized = allStatements.filter((s) => s.type !== 'raw');
+		const rawStatements = allStatements.filter((s) => s.type === 'raw');
 
-			if (rawStatements.length > 0) {
-				this.#logger.warn(
-					`${rawStatements.length} unrecognized statement(s) are carried through verbatim: ${rawStatements
-						.map((s) => s.name)
-						.join(', ')}`,
-				);
-			}
-
-			const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
-			const sortedStatements = this.#topologicalSorter.sortStatements(
-				recognized,
-				graph,
+		if (rawStatements.length > 0) {
+			this.#logger.warn(
+				`${rawStatements.length} unrecognized statement(s) are carried through verbatim: ${rawStatements
+					.map((s) => s.name)
+					.join(', ')}`,
 			);
+		}
 
-			const finalStatements = this.#weaveRawStatements(
-				sortedStatements,
-				allStatements,
-			);
+		const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
+		const sortedStatements = this.#topologicalSorter.sortStatements(
+			recognized,
+			graph,
+		);
 
-			return this.#fileMerger.mergeStatements(finalStatements, options);
-		}, 'mergeFiles')();
+		const finalStatements = this.#weaveRawStatements(
+			sortedStatements,
+			allStatements,
+		);
+
+		return this.#fileMerger.mergeStatements(finalStatements, options);
 	}
 
 	/**
@@ -279,34 +265,32 @@ export class SqlMerger {
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
 	): void {
-		this.#errorHandler.wrapWithErrorHandling(() => {
-			this.#logger.header('🔍 SQL Dependency Analyzer');
+		this.#logger.header('🔍 SQL Dependency Analyzer');
 
-			const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
+		const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
 
-			const recognized: SqlStatement[] = [];
-			for (const file of sqlFiles) {
-				recognized.push(...file.statements.filter((s) => s.type !== 'raw'));
-			}
+		const recognized: SqlStatement[] = [];
+		for (const file of sqlFiles) {
+			recognized.push(...file.statements.filter((s) => s.type !== 'raw'));
+		}
 
-			const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
-			const sortedStatements = this.#topologicalSorter.sortStatements(
-				recognized,
-				graph,
+		const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
+		const sortedStatements = this.#topologicalSorter.sortStatements(
+			recognized,
+			graph,
+		);
+
+		this.#logger.info('📋 Recommended execution order:');
+		sortedStatements.forEach((stmt, index) => {
+			const fileName = stmt.filePath.split('/').pop();
+			const deps =
+				stmt.dependsOn.length > 0
+					? ` (depends on: ${stmt.dependsOn.map((d) => d.name).join(', ')})`
+					: ' (no dependencies)';
+			this.#logger.info(
+				`  ${index + 1}. ${fileName} - ${stmt.type}:${stmt.name}${deps}`,
 			);
-
-			this.#logger.info('📋 Recommended execution order:');
-			sortedStatements.forEach((stmt, index) => {
-				const fileName = stmt.filePath.split('/').pop();
-				const deps =
-					stmt.dependsOn.length > 0
-						? ` (depends on: ${stmt.dependsOn.map((d) => d.name).join(', ')})`
-						: ' (no dependencies)';
-				this.#logger.info(
-					`  ${index + 1}. ${fileName} - ${stmt.type}:${stmt.name}${deps}`,
-				);
-			});
-		}, 'analyzeDependencies')();
+		});
 	}
 
 	/**
@@ -316,35 +300,33 @@ export class SqlMerger {
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
 	): void {
-		this.#errorHandler.wrapWithErrorHandling(() => {
-			this.#logger.header('✅ SQL Validator');
+		this.#logger.header('✅ SQL Validator');
 
-			const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
+		const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
 
-			const allStatements: SqlStatement[] = [];
-			for (const file of sqlFiles) {
-				allStatements.push(...file.statements);
+		const allStatements: SqlStatement[] = [];
+		for (const file of sqlFiles) {
+			allStatements.push(...file.statements);
+		}
+
+		for (const file of sqlFiles) {
+			const fileName = file.path.split('/').pop() || file.path;
+			if (file.statements.length === 0) {
+				this.#logger.warn(`${fileName} - no statements found`);
+			} else {
+				const stmtDescriptions = file.statements
+					.map((s) => `${s.type}:${s.name}`)
+					.join(', ');
+				this.#logger.success(`${fileName} - ${stmtDescriptions}`);
 			}
+		}
 
-			for (const file of sqlFiles) {
-				const fileName = file.path.split('/').pop() || file.path;
-				if (file.statements.length === 0) {
-					this.#logger.warn(`${fileName} - no statements found`);
-				} else {
-					const stmtDescriptions = file.statements
-						.map((s) => `${s.type}:${s.name}`)
-						.join(', ');
-					this.#logger.success(`${fileName} - ${stmtDescriptions}`);
-				}
-			}
+		this.#logger.info(
+			`\n📊 Total: ${sqlFiles.length} files, ${allStatements.length} statements`,
+		);
 
-			this.#logger.info(
-				`\n📊 Total: ${sqlFiles.length} files, ${allStatements.length} statements`,
-			);
-
-			this.#logger.success('No circular dependencies detected');
-			this.#logger.success('Ready for merging');
-		}, 'validateFiles')();
+		this.#logger.success('No circular dependencies detected');
+		this.#logger.success('Ready for merging');
 	}
 
 	/**

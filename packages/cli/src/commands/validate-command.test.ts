@@ -94,7 +94,7 @@ describe('executeValidateCommand', () => {
 	});
 
 	describe('error handling', () => {
-		it('should log an error and re-throw when validation fails', async () => {
+		it('should let the outer CLI boundary log validation failures', async () => {
 			const inputPath = './test-directory';
 			const validationError = new Error('Validation failed');
 			mockMerger.validateFiles.mockRejectedValue(validationError);
@@ -103,9 +103,7 @@ describe('executeValidateCommand', () => {
 				executeValidateCommand(inputPath, defaultOptions),
 			).rejects.toThrow(validationError);
 
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Validation failed: Validation failed',
-			);
+			expect(mockLogger.error).not.toHaveBeenCalled();
 		});
 
 		it('should handle non-Error objects being thrown', async () => {
@@ -117,9 +115,7 @@ describe('executeValidateCommand', () => {
 				executeValidateCommand(inputPath, defaultOptions),
 			).rejects.toBe(validationError);
 
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Validation failed: A string error',
-			);
+			expect(mockLogger.error).not.toHaveBeenCalled();
 		});
 	});
 
@@ -137,11 +133,6 @@ describe('executeValidateCommand', () => {
 					getLogger = mockContainer.getLogger;
 				} as any,
 			);
-
-			mockContainer.getLogger.mockImplementation(() => {
-				callOrder.push('getLogger');
-				return mockLogger;
-			});
 
 			mockedResolve.mockImplementation((path: string) => {
 				callOrder.push('resolve');
@@ -162,7 +153,6 @@ describe('executeValidateCommand', () => {
 
 			expect(callOrder).toEqual([
 				'ServiceContainer',
-				'getLogger',
 				'resolve',
 				'SqlMerger.withContainer',
 				'validateFiles',

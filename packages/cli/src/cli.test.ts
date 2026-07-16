@@ -1,4 +1,4 @@
-import { ErrorHandler, type LogLevel } from '@sqlsmith/core';
+import type { LogLevel } from '@sqlsmith/core';
 import { Command, Option } from 'commander';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProgram, main } from './cli.js';
@@ -30,7 +30,6 @@ describe('CLI', () => {
 	const mockExecuteValidateCommand = vi.mocked(executeValidateCommand);
 	const MockedCommand = vi.mocked(Command);
 	const MockedOption = vi.mocked(Option);
-	const MockedErrorHandler = vi.mocked(ErrorHandler);
 
 	let mergeAction: (input: string, options: any) => Promise<void>;
 	let infoAction: (input: string, options: any) => Promise<void>;
@@ -104,11 +103,6 @@ describe('CLI', () => {
 		mockExecuteMergeCommand.mockResolvedValue(undefined);
 		mockExecuteInfoCommand.mockResolvedValue(undefined);
 		mockExecuteValidateCommand.mockResolvedValue(undefined);
-		MockedErrorHandler.mockImplementation(
-			class {
-				handleCommandError = vi.fn();
-			} as any,
-		);
 	});
 
 	describe('merge command', () => {

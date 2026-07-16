@@ -1,0 +1,705 @@
+{
+	"schemaVersion": 1,
+	"planPath": "docs/refactoring-backlog.md",
+	"priorities": ["P0", "P1", "P2"],
+	"boundaries": [
+		"core-public-api",
+		"core-fixture-golden",
+		"cli-subprocess",
+		"cli-error-mapping",
+		"vite-plugin-hook",
+		"vite-build",
+		"workspace-regression",
+		"compile-time-api",
+		"documentation-capability"
+	],
+	"requirements": [
+		{
+			"id": "R3-01",
+			"stage": "3",
+			"priority": "P0",
+			"description": "Expected core failures use concrete SqlMergerError subclasses."
+		},
+		{
+			"id": "R3-02",
+			"stage": "3",
+			"priority": "P0",
+			"description": "Parse and I/O errors preserve path, line, operation, context, and cause."
+		},
+		{
+			"id": "R3-03",
+			"stage": "3",
+			"priority": "P0",
+			"description": "Every ErrorCode has the documented CLI exit-code mapping."
+		},
+		{
+			"id": "R3-04",
+			"stage": "3",
+			"priority": "P0",
+			"description": "An external boundary logs a failure exactly once and core does not log thrown errors."
+		},
+		{
+			"id": "R3-05",
+			"stage": "3",
+			"priority": "P1",
+			"description": "ErrorHandler and nested catch-log-rethrow wrappers are removed."
+		},
+		{
+			"id": "R3-06",
+			"stage": "3",
+			"priority": "P1",
+			"description": "Error refactoring preserves stdout, golden output, and dependency behavior."
+		},
+		{
+			"id": "R4-01",
+			"stage": "4",
+			"priority": "P0",
+			"description": "SqlMerger uses a normal constructor and typed dependencies without ServiceContainer."
+		},
+		{
+			"id": "R4-02",
+			"stage": "4",
+			"priority": "P0",
+			"description": "Each command creates and reuses exactly one MergePlan and graph."
+		},
+		{
+			"id": "R4-03",
+			"stage": "4",
+			"priority": "P0",
+			"description": "Every planning path reports cycles as a typed circular-dependency error."
+		},
+		{
+			"id": "R4-04",
+			"stage": "4",
+			"priority": "P0",
+			"description": "Core returns data while CLI owns graph and progress presentation."
+		},
+		{
+			"id": "R4-05",
+			"stage": "4",
+			"priority": "P0",
+			"description": "Merge, info, and validate preserve their observable CLI contracts."
+		},
+		{
+			"id": "R4-06",
+			"stage": "4",
+			"priority": "P1",
+			"description": "The new pipeline preserves all statement and golden SQL contracts."
+		},
+		{
+			"id": "R4-07",
+			"stage": "4",
+			"priority": "P1",
+			"description": "Only intentional logger and processor extension points remain public."
+		},
+		{
+			"id": "R5-01",
+			"stage": "5",
+			"priority": "P0",
+			"description": "The Vite plugin owns a test suite included in recursive workspace tests."
+		},
+		{
+			"id": "R5-02",
+			"stage": "5",
+			"priority": "P0",
+			"description": "Plugin watching and core planning share recursive discovery."
+		},
+		{
+			"id": "R5-03",
+			"stage": "5",
+			"priority": "P0",
+			"description": "Silent mode suppresses logs without suppressing generation and uses one logger configuration."
+		},
+		{
+			"id": "R5-04",
+			"stage": "5",
+			"priority": "P0",
+			"description": "Path containment rejects siblings and generated output cannot self-merge."
+		},
+		{
+			"id": "R5-05",
+			"stage": "5",
+			"priority": "P0",
+			"description": "Create, update, and delete events each trigger one full regeneration."
+		},
+		{
+			"id": "R5-06",
+			"stage": "5",
+			"priority": "P0",
+			"description": "Failed regeneration preserves the last good output and reports through Vite."
+		},
+		{
+			"id": "R5-07",
+			"stage": "5",
+			"priority": "P1",
+			"description": "Vite peer support, tested version, and plugin documentation agree."
+		},
+		{
+			"id": "R6A-01",
+			"stage": "6a",
+			"priority": "P0",
+			"description": "Relations use structured schema, name, display, and quoting metadata without changing SQL content."
+		},
+		{
+			"id": "R6A-02",
+			"stage": "6a",
+			"priority": "P0",
+			"description": "PostgreSQL identifiers follow quoted and unquoted normalization with a configurable default schema."
+		},
+		{
+			"id": "R6A-03",
+			"stage": "6a",
+			"priority": "P0",
+			"description": "Relation keys are collision-safe structured values rather than dotted display strings."
+		},
+		{
+			"id": "R6A-04",
+			"stage": "6a",
+			"priority": "P0",
+			"description": "All graph and validation operations use the same relation identity contract."
+		},
+		{
+			"id": "R6A-05",
+			"stage": "6a",
+			"priority": "P0",
+			"description": "Relation types collide within one schema and identical names coexist across schemas."
+		},
+		{
+			"id": "R6A-06",
+			"stage": "6a",
+			"priority": "P1",
+			"description": "A targeted source lexer preserves quoting, doubled quotes, and quoted dots."
+		},
+		{
+			"id": "R6B-01",
+			"stage": "6b",
+			"priority": "P0",
+			"description": "View dependencies cover joins, derived tables, subqueries, and set branches."
+		},
+		{
+			"id": "R6B-02",
+			"stage": "6b",
+			"priority": "P0",
+			"description": "CTE aliases are scoped locally while their bodies contribute real dependencies."
+		},
+		{
+			"id": "R6B-03",
+			"stage": "6b",
+			"priority": "P0",
+			"description": "View-to-view and view-to-table relation dependencies are deduplicated."
+		},
+		{
+			"id": "R6B-04",
+			"stage": "6b",
+			"priority": "P1",
+			"description": "Known SELECT forms are handled explicitly and unknown forms are not silently ignored."
+		},
+		{
+			"id": "R6C-01",
+			"stage": "6c",
+			"priority": "P0",
+			"description": "Every advertised dialect has a documented and tested capability matrix."
+		},
+		{
+			"id": "R6C-02",
+			"stage": "6c",
+			"priority": "P0",
+			"description": "Core, CLI, plugin, and docs share one supported-dialect registry."
+		},
+		{
+			"id": "R6C-03",
+			"stage": "6c",
+			"priority": "P0",
+			"description": "Every supported dialect has P0 parse, ordering, error, and golden fixtures."
+		},
+		{
+			"id": "R6C-04",
+			"stage": "6c",
+			"priority": "P1",
+			"description": "Dialect AST differences are isolated behind rules or adapters."
+		}
+	],
+	"cases": [
+		{
+			"id": "C3-TYPED-PARSE",
+			"requirementIds": ["R3-01", "R3-02"],
+			"boundary": "core-public-api",
+			"expected": "Malformed SQL and processor failures expose typed errors with file, line, processor, and cause context.",
+			"traceId": "T3-TYPED-PARSE"
+		},
+		{
+			"id": "C3-TYPED-FS",
+			"requirementIds": ["R3-01", "R3-02"],
+			"boundary": "core-public-api",
+			"expected": "Directory, file-read, and output-write failures expose FileSystemError with operation and path.",
+			"traceId": "T3-TYPED-FS"
+		},
+		{
+			"id": "C3-EXIT-MATRIX",
+			"requirementIds": ["R3-03"],
+			"boundary": "cli-error-mapping",
+			"expected": "Every declared error code maps to exit 1, 2, 3, or 4 as documented.",
+			"traceId": "T3-EXIT-MATRIX"
+		},
+		{
+			"id": "C3-LOG-ONCE",
+			"requirementIds": ["R3-04", "R3-05"],
+			"boundary": "cli-subprocess",
+			"expected": "Each failed command emits one sentinel error message, empty stdout, and no nested duplicate logging.",
+			"traceId": "T3-LOG-ONCE"
+		},
+		{
+			"id": "C3-REGRESSION",
+			"requirementIds": ["R3-06"],
+			"boundary": "workspace-regression",
+			"expected": "Build, all package tests, and golden output remain green.",
+			"traceId": "T3-REGRESSION"
+		},
+		{
+			"id": "C4-CONSTRUCTOR",
+			"requirementIds": ["R4-01", "R4-07"],
+			"boundary": "compile-time-api",
+			"expected": "The documented constructor and typed dependency seam compile with no container symbols.",
+			"traceId": "T4-CONSTRUCTOR"
+		},
+		{
+			"id": "C4-SINGLE-PLAN",
+			"requirementIds": ["R4-02"],
+			"boundary": "core-public-api",
+			"expected": "Planning builds one graph and merge consumes the returned plan without rebuilding it.",
+			"traceId": "T4-SINGLE-PLAN"
+		},
+		{
+			"id": "C4-CYCLE",
+			"requirementIds": ["R4-03"],
+			"boundary": "core-public-api",
+			"expected": "Directory and in-memory planning report CIRCULAR_DEPENDENCY for cyclic input.",
+			"traceId": "T4-CYCLE"
+		},
+		{
+			"id": "C4-PRESENTATION",
+			"requirementIds": ["R4-04"],
+			"boundary": "core-public-api",
+			"expected": "Programmatic planning returns diagnostics without graph headers or progress output.",
+			"traceId": "T4-PRESENTATION"
+		},
+		{
+			"id": "C4-CLI",
+			"requirementIds": ["R4-05"],
+			"boundary": "cli-subprocess",
+			"expected": "Merge, info, and validate preserve SQL stdout, stderr presentation, diagnostics, and exit codes.",
+			"traceId": "T4-CLI"
+		},
+		{
+			"id": "C4-GOLDEN",
+			"requirementIds": ["R4-06"],
+			"boundary": "core-fixture-golden",
+			"expected": "Every existing correct scenario produces the same normalized SQL through MergePlan.",
+			"traceId": "T4-GOLDEN"
+		},
+		{
+			"id": "C5-SUITE",
+			"requirementIds": ["R5-01"],
+			"boundary": "workspace-regression",
+			"expected": "pnpm -r test executes and passes the Vite plugin suite.",
+			"traceId": "T5-SUITE"
+		},
+		{
+			"id": "C5-NESTED",
+			"requirementIds": ["R5-02"],
+			"boundary": "vite-plugin-hook",
+			"expected": "Nested SQL files are watched, planned, and emitted in dependency order.",
+			"traceId": "T5-NESTED"
+		},
+		{
+			"id": "C5-SILENT",
+			"requirementIds": ["R5-03"],
+			"boundary": "vite-plugin-hook",
+			"expected": "Silent buildStart writes the same output as info mode while producing no SQLsmith log entries.",
+			"traceId": "T5-SILENT"
+		},
+		{
+			"id": "C5-CONTAINMENT",
+			"requirementIds": ["R5-04"],
+			"boundary": "vite-plugin-hook",
+			"expected": "Sibling paths and generated output are excluded while true descendants are accepted.",
+			"traceId": "T5-CONTAINMENT"
+		},
+		{
+			"id": "C5-WATCH",
+			"requirementIds": ["R5-05"],
+			"boundary": "vite-plugin-hook",
+			"expected": "Create, update, and delete events each perform one rediscovery and regeneration.",
+			"traceId": "T5-WATCH"
+		},
+		{
+			"id": "C5-ATOMIC",
+			"requirementIds": ["R5-06"],
+			"boundary": "vite-build",
+			"expected": "A malformed update leaves the last good output unchanged and build failures reach Vite once.",
+			"traceId": "T5-ATOMIC"
+		},
+		{
+			"id": "C5-COMPAT",
+			"requirementIds": ["R5-07"],
+			"boundary": "documentation-capability",
+			"expected": "Peer range, tested Vite major, package metadata, and README support statement agree.",
+			"traceId": "T5-COMPAT"
+		},
+		{
+			"id": "C6A-MODEL",
+			"requirementIds": ["R6A-01"],
+			"boundary": "core-public-api",
+			"expected": "Parsed relations expose immutable structured identifiers while merged statement SQL stays lossless.",
+			"traceId": "T6A-MODEL"
+		},
+		{
+			"id": "C6A-NORMALIZE",
+			"requirementIds": ["R6A-02"],
+			"boundary": "core-fixture-golden",
+			"expected": "PostgreSQL unquoted and quoted names resolve with configured default-schema semantics.",
+			"traceId": "T6A-NORMALIZE"
+		},
+		{
+			"id": "C6A-COLLISION",
+			"requirementIds": ["R6A-03"],
+			"boundary": "core-public-api",
+			"expected": "Quoted dots and schema separators produce distinct collision-safe relation keys.",
+			"traceId": "T6A-COLLISION"
+		},
+		{
+			"id": "C6A-GRAPH",
+			"requirementIds": ["R6A-04"],
+			"boundary": "core-fixture-golden",
+			"expected": "Duplicate, missing, self, source-order, sort, and diagnostics agree on relation identity.",
+			"traceId": "T6A-GRAPH"
+		},
+		{
+			"id": "C6A-NAMESPACE",
+			"requirementIds": ["R6A-05"],
+			"boundary": "core-fixture-golden",
+			"expected": "Same-schema relation types conflict and same display names in different schemas coexist.",
+			"traceId": "T6A-NAMESPACE"
+		},
+		{
+			"id": "C6A-LEXER",
+			"requirementIds": ["R6A-06"],
+			"boundary": "core-public-api",
+			"expected": "The source lexer distinguishes quoting, doubled quotes, and dots inside identifiers.",
+			"traceId": "T6A-LEXER"
+		},
+		{
+			"id": "C6B-NESTED",
+			"requirementIds": ["R6B-01"],
+			"boundary": "core-fixture-golden",
+			"expected": "Views depend on relations found in joins, derived tables, subqueries, and every set branch.",
+			"traceId": "T6B-NESTED"
+		},
+		{
+			"id": "C6B-CTE",
+			"requirementIds": ["R6B-02"],
+			"boundary": "core-fixture-golden",
+			"expected": "CTE bodies contribute dependencies while local and recursive aliases never become missing relations.",
+			"traceId": "T6B-CTE"
+		},
+		{
+			"id": "C6B-RELATION",
+			"requirementIds": ["R6B-03"],
+			"boundary": "core-fixture-golden",
+			"expected": "View-to-view and view-to-table chains sort correctly and repeated references are deduplicated.",
+			"traceId": "T6B-RELATION"
+		},
+		{
+			"id": "C6B-UNKNOWN",
+			"requirementIds": ["R6B-04"],
+			"boundary": "core-public-api",
+			"expected": "Unsupported SELECT AST forms produce an explicit diagnostic or typed error instead of silent omission.",
+			"traceId": "T6B-UNKNOWN"
+		},
+		{
+			"id": "C6C-CAPABILITY",
+			"requirementIds": ["R6C-01"],
+			"boundary": "documentation-capability",
+			"expected": "Every advertised dialect row has executable cases for each claimed P0 capability.",
+			"traceId": "T6C-CAPABILITY"
+		},
+		{
+			"id": "C6C-REGISTRY",
+			"requirementIds": ["R6C-02"],
+			"boundary": "compile-time-api",
+			"expected": "Core type, CLI choices, plugin type, and documentation resolve from one supported registry.",
+			"traceId": "T6C-REGISTRY"
+		},
+		{
+			"id": "C6C-GOLDEN",
+			"requirementIds": ["R6C-03"],
+			"boundary": "core-fixture-golden",
+			"expected": "Every remaining supported dialect passes base, FK, duplicate, missing, view, order, and golden cases.",
+			"traceId": "T6C-GOLDEN"
+		},
+		{
+			"id": "C6C-ADAPTER",
+			"requirementIds": ["R6C-04"],
+			"boundary": "core-public-api",
+			"expected": "Dialect-specific AST inputs produce the common relation model through isolated adapters.",
+			"traceId": "T6C-ADAPTER"
+		}
+	],
+	"traces": [
+		{
+			"id": "T3-TYPED-PARSE",
+			"caseIds": ["C3-TYPED-PARSE"],
+			"path": "packages/core/test/error-contract.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T3-TYPED-FS",
+			"caseIds": ["C3-TYPED-FS"],
+			"path": "packages/core/test/file-system-validator.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T3-EXIT-MATRIX",
+			"caseIds": ["C3-EXIT-MATRIX"],
+			"path": "packages/cli/src/utils.exit-codes.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T3-LOG-ONCE",
+			"caseIds": ["C3-LOG-ONCE"],
+			"path": "packages/cli/src/cli.e2e.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T3-REGRESSION",
+			"caseIds": ["C3-REGRESSION"],
+			"path": "packages/core/test/golden-output.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T4-CONSTRUCTOR",
+			"caseIds": ["C4-CONSTRUCTOR"],
+			"path": "packages/core/test/public-api.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "The target constructor and removal contract are introduced in stage 4."
+		},
+		{
+			"id": "T4-SINGLE-PLAN",
+			"caseIds": ["C4-SINGLE-PLAN"],
+			"path": "packages/core/test/merge-plan.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "MergePlan does not exist before stage 4."
+		},
+		{
+			"id": "T4-CYCLE",
+			"caseIds": ["C4-CYCLE"],
+			"path": "packages/core/test/merge-plan.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "The unified planning cycle boundary is created in stage 4."
+		},
+		{
+			"id": "T4-PRESENTATION",
+			"caseIds": ["C4-PRESENTATION"],
+			"path": "packages/core/test/merge-plan.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Presentation currently occurs inside parseSqlFiles."
+		},
+		{
+			"id": "T4-CLI",
+			"caseIds": ["C4-CLI"],
+			"path": "packages/cli/src/cli.e2e.test.ts",
+			"status": "planned",
+			"pendingReason": "CLI commands are migrated to MergePlan in stage 4."
+		},
+		{
+			"id": "T4-GOLDEN",
+			"caseIds": ["C4-GOLDEN"],
+			"path": "packages/core/test/golden-output.test.ts",
+			"status": "planned",
+			"pendingReason": "The existing golden harness is migrated to MergePlan in stage 4."
+		},
+		{
+			"id": "T5-SUITE",
+			"caseIds": ["C5-SUITE"],
+			"path": "packages/vite-plugin/package.json",
+			"status": "planned",
+			"pendingReason": "The plugin currently has no test script."
+		},
+		{
+			"id": "T5-NESTED",
+			"caseIds": ["C5-NESTED"],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "planned",
+			"pendingReason": "The Vite contract suite is created in stage 5."
+		},
+		{
+			"id": "T5-SILENT",
+			"caseIds": ["C5-SILENT"],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "planned",
+			"pendingReason": "Silent currently returns before generation."
+		},
+		{
+			"id": "T5-CONTAINMENT",
+			"caseIds": ["C5-CONTAINMENT"],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "planned",
+			"pendingReason": "Containment and output exclusion tests are added in stage 5."
+		},
+		{
+			"id": "T5-WATCH",
+			"caseIds": ["C5-WATCH"],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "planned",
+			"pendingReason": "Create, update, and delete are unified behind watchChange in stage 5."
+		},
+		{
+			"id": "T5-ATOMIC",
+			"caseIds": ["C5-ATOMIC"],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "planned",
+			"pendingReason": "Atomic output and last-good behavior do not exist yet."
+		},
+		{
+			"id": "T5-COMPAT",
+			"caseIds": ["C5-COMPAT"],
+			"path": "packages/vite-plugin/test/vite-build.integration.test.ts",
+			"status": "planned",
+			"pendingReason": "Vite peer and development majors are currently inconsistent."
+		},
+		{
+			"id": "T6A-MODEL",
+			"caseIds": ["C6A-MODEL"],
+			"path": "packages/core/test/identifier-model.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Structured relation identifiers are introduced in stage 6a."
+		},
+		{
+			"id": "T6A-NORMALIZE",
+			"caseIds": ["C6A-NORMALIZE"],
+			"path": "packages/core/test/identifier-model.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "PostgreSQL normalization fixtures are added in stage 6a."
+		},
+		{
+			"id": "T6A-COLLISION",
+			"caseIds": ["C6A-COLLISION"],
+			"path": "packages/core/test/identifier-model.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Collision-safe keys do not exist yet."
+		},
+		{
+			"id": "T6A-GRAPH",
+			"caseIds": ["C6A-GRAPH"],
+			"path": "packages/core/test/fixtures/postgresql/identifier-contracts.expected.sql",
+			"status": "planned",
+			"pendingReason": "Graph identity fixtures are added in stage 6a."
+		},
+		{
+			"id": "T6A-NAMESPACE",
+			"caseIds": ["C6A-NAMESPACE"],
+			"path": "packages/core/test/identifier-model.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Cross-schema and shared relation-namespace cases are added in stage 6a."
+		},
+		{
+			"id": "T6A-LEXER",
+			"caseIds": ["C6A-LEXER"],
+			"path": "packages/core/test/sql-identifier-lexer.test.ts",
+			"status": "planned",
+			"pendingReason": "The targeted identifier lexer is implemented in stage 6a."
+		},
+		{
+			"id": "T6B-NESTED",
+			"caseIds": ["C6B-NESTED"],
+			"path": "packages/core/test/view-dependencies.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Nested SELECT dependency traversal is implemented in stage 6b."
+		},
+		{
+			"id": "T6B-CTE",
+			"caseIds": ["C6B-CTE"],
+			"path": "packages/core/test/view-dependencies.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Scoped CTE traversal is implemented in stage 6b."
+		},
+		{
+			"id": "T6B-RELATION",
+			"caseIds": ["C6B-RELATION"],
+			"path": "packages/core/test/view-dependencies.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "View relation-chain fixtures are added in stage 6b."
+		},
+		{
+			"id": "T6B-UNKNOWN",
+			"caseIds": ["C6B-UNKNOWN"],
+			"path": "packages/core/test/view-dependencies.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "The unknown-AST policy is implemented and tested in stage 6b."
+		},
+		{
+			"id": "T6C-CAPABILITY",
+			"caseIds": ["C6C-CAPABILITY"],
+			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "The executable dialect capability matrix is added in stage 6c."
+		},
+		{
+			"id": "T6C-REGISTRY",
+			"caseIds": ["C6C-REGISTRY"],
+			"path": "packages/core/test/public-api.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "A shared supported-dialect registry is introduced in stage 6c."
+		},
+		{
+			"id": "T6C-GOLDEN",
+			"caseIds": ["C6C-GOLDEN"],
+			"path": "packages/core/test/golden-output.test.ts",
+			"status": "planned",
+			"pendingReason": "Capability-gated dialect fixtures are completed in stage 6c."
+		},
+		{
+			"id": "T6C-ADAPTER",
+			"caseIds": ["C6C-ADAPTER"],
+			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
+			"status": "planned",
+			"pendingReason": "Dialect adapters and their common-model contract are added in stage 6c."
+		}
+	],
+	"acceptance": {
+		"caseIds": [
+			"C3-TYPED-PARSE",
+			"C3-TYPED-FS",
+			"C3-EXIT-MATRIX",
+			"C3-LOG-ONCE",
+			"C3-REGRESSION",
+			"C4-CONSTRUCTOR",
+			"C4-SINGLE-PLAN",
+			"C4-CYCLE",
+			"C4-PRESENTATION",
+			"C4-CLI",
+			"C4-GOLDEN",
+			"C5-SUITE",
+			"C5-NESTED",
+			"C5-SILENT",
+			"C5-CONTAINMENT",
+			"C5-WATCH",
+			"C5-ATOMIC",
+			"C5-COMPAT",
+			"C6A-MODEL",
+			"C6A-NORMALIZE",
+			"C6A-COLLISION",
+			"C6A-GRAPH",
+			"C6A-NAMESPACE",
+			"C6A-LEXER",
+			"C6B-NESTED",
+			"C6B-CTE",
+			"C6B-RELATION",
+			"C6B-UNKNOWN",
+			"C6C-CAPABILITY",
+			"C6C-REGISTRY",
+			"C6C-GOLDEN",
+			"C6C-ADAPTER"
+		]
+	}
+}

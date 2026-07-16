@@ -1,7 +1,11 @@
 import {
 	ConfigurationError,
 	DependencyError,
+	ErrorCode,
 	FileSystemError,
+	ParsingError,
+	ProcessingError,
+	type SqlMergerError,
 } from '@sqlsmith/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleCommandError } from './utils.js';
@@ -36,33 +40,56 @@ describe('handleCommandError exit codes', () => {
 		expect(exitSpy).toHaveBeenCalledWith(expectedCode);
 	};
 
-	it('exits with 2 for file system errors', () => {
-		expectExitCode(FileSystemError.noSqlFiles('/some/dir'), 2);
-	});
-
-	it('exits with 2 for missing directories', () => {
-		expectExitCode(FileSystemError.directoryNotFound('/some/dir'), 2);
-	});
-
-	it('exits with 3 for circular dependencies', () => {
-		expectExitCode(DependencyError.circularDependency([['a', 'b', 'a']]), 3);
-	});
-
-	it('exits with 3 for missing dependencies', () => {
-		expectExitCode(DependencyError.missingDependency('orders', 'customers'), 3);
-	});
-
-	it('exits with 3 for duplicate statement names', () => {
-		expectExitCode(
+	// C3-EXIT-MATRIX / R3-03
+	it.each<[string, SqlMergerError, number]>([
+		['missing directory', FileSystemError.directoryNotFound('/dir'), 2],
+		['missing file', FileSystemError.fileNotFound('/file.sql'), 2],
+		['no SQL files', FileSystemError.noSqlFiles('/dir'), 2],
+		['invalid output', FileSystemError.invalidOutputPath('/out.sql'), 2],
+		[
+			'circular dependency',
+			DependencyError.circularDependency([['a', 'b', 'a']]),
+			3,
+		],
+		[
+			'duplicate relation',
 			DependencyError.duplicateStatementNames([
 				{ name: 'users', files: ['a.sql', 'b.sql'] },
 			]),
 			3,
-		);
+		],
+		['missing dependency', DependencyError.missingDependency('a', 'b'), 3],
+		[
+			'invalid source order',
+			DependencyError.invalidStatementOrder('a.sql', 'b appears later'),
+			3,
+		],
+		[
+			'invalid configuration',
+			ConfigurationError.invalidOptions('dialect', 'oracle'),
+			4,
+		],
+		[
+			'missing configuration',
+			ConfigurationError.missingRequiredOption('input'),
+			4,
+		],
+		[
+			'invalid SQL',
+			ParsingError.invalidSqlSyntax('/bad.sql', 2, new Error('syntax')),
+			1,
+		],
+		['parser failure', ParsingError.parsingFailed('/bad.sql'), 1],
+		['processor failure', ProcessingError.processorError('Fake'), 1],
+		['merge failure', ProcessingError.mergeFailed('sentinel'), 1],
+	])('maps %s', (_name, error, expectedCode) => {
+		expectExitCode(error, expectedCode);
 	});
 
-	it('exits with 4 for configuration errors', () => {
-		expectExitCode(ConfigurationError.invalidOptions('dialect', 'nope'), 4);
+	it('maps the legacy unsupported-dialect code to configuration exit 4', () => {
+		const error = ParsingError.unsupportedDialect('oracle');
+		expect(error.code).toBe(ErrorCode.UNSUPPORTED_DIALECT);
+		expectExitCode(error, 4);
 	});
 
 	it('exits with 1 for unknown errors', () => {

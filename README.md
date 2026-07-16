@@ -395,10 +395,16 @@ sqlsmith ./legacy-schemas --no-validate-source-order
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | General error (e.g. SQL syntax) |
-| 2 | Input/file errors (missing directory, no SQL files) |
-| 3 | Dependency errors (circular, duplicate names, missing dependency) |
-| 4 | Configuration errors (invalid options) |
+| 1 | SQL syntax, processing, internal, or unexpected errors |
+| 2 | Input/output filesystem errors (missing paths, unreadable input, unwritable output) |
+| 3 | Dependency and declaration-order errors |
+| 4 | Configuration errors (invalid options or unsupported dialect) |
+
+Library errors are typed (`FileSystemError`, `ParsingError`,
+`DependencyError`, `ProcessingError`, or `ConfigurationError`) and retain
+their error code, file/line context, and original cause. The core library does
+not print exceptions; the CLI logs each failure exactly once at its outer
+boundary and then exits with the code above.
 
 ### Missing Dependencies
 ```bash
