@@ -356,6 +356,10 @@ source-order validation → graph → missing refs → cycle/sort → raw weave.
 
 ## Этап 5 — контракт и надёжность Vite plugin
 
+**Статус: completed.** Все C5-трассы executable; plugin использует общий
+recursive discovery, единый `LogLevel`, `watchChange` и atomic last-good
+output, а реальный Vite 6 build входит в package suite.
+
 ### Требования
 
 - **R5-01 (P0):** у `@sqlsmith/vite-plugin` есть собственный Vitest suite и

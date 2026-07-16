@@ -1,187 +1,118 @@
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { Logger, SqlMerger } from '@sqlsmith/core';
+import { existsSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
+import {
+	FileSystemError,
+	Logger,
+	type LogLevel,
+	type MergeDiagnostic,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 import type { PluginContext } from 'rollup';
-import type { HmrContext, Plugin } from 'vite';
+import type { Plugin } from 'vite';
 
 export interface SqlsmithPluginOptions {
 	input: string;
 	output: string;
-	dialect?: 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
+	dialect?: SqlDialect;
 	watch?: boolean;
-	logLevel?: 'silent' | 'error' | 'normal' | 'verbose';
+	logLevel?: LogLevel;
+	allowExternalReferences?: boolean;
 }
 
 export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
-	// Convert logLevel to logger options
-	const getLogLevel = (logLevel: string = 'normal') => {
-		switch (logLevel) {
-			case 'silent':
-				return 'error';
-			case 'error':
-				return 'error';
-			case 'verbose':
-				return 'debug';
-			default:
-				return 'info';
+	const input = resolve(options.input);
+	const output = resolve(options.output);
+	const dialect = options.dialect ?? 'postgresql';
+	const logger = new Logger({ logLevel: options.logLevel ?? 'info' });
+	const merger = new SqlMerger({
+		logger,
+		allowExternalReferences: options.allowExternalReferences ?? false,
+	});
+	let command: 'build' | 'serve' = 'build';
+	let watchEnabled = options.watch ?? false;
+
+	const isWithinInput = (candidate: string): boolean => {
+		const pathFromInput = relative(input, resolve(candidate));
+		return (
+			pathFromInput === '' ||
+			(!pathFromInput.startsWith('..') && !isAbsolute(pathFromInput))
+		);
+	};
+
+	const isRelevantSql = (candidate: string): boolean =>
+		candidate.toLowerCase().endsWith('.sql') &&
+		isWithinInput(candidate) &&
+		resolve(candidate) !== output;
+
+	const renderDiagnostic = (diagnostic: MergeDiagnostic): void => {
+		if (diagnostic.code === 'RAW_STATEMENTS') {
+			logger.warn(`${diagnostic.message}: ${diagnostic.statements.join(', ')}`);
+			return;
+		}
+		logger.warn(diagnostic.message);
+	};
+
+	const writeAtomically = (content: string): void => {
+		const temporaryOutput = `${output}.${process.pid}.tmp`;
+		try {
+			writeFileSync(temporaryOutput, content, 'utf8');
+			renameSync(temporaryOutput, output);
+		} catch (error) {
+			if (existsSync(temporaryOutput)) unlinkSync(temporaryOutput);
+			throw FileSystemError.fileWriteFailed(
+				output,
+				error instanceof Error ? error : new Error(String(error)),
+			);
 		}
 	};
 
-	const logger = new Logger({ logLevel: getLogLevel(options.logLevel) });
-	const merger = new SqlMerger({ logger });
-	const isErrorOnly = options.logLevel === 'error';
-	const isSilent = options.logLevel === 'silent';
-	let sqlFiles: string[] = [];
-	let pluginContext: PluginContext;
+	const generate = (context: PluginContext): void => {
+		context.addWatchFile(input);
+		const plan = merger.planDirectory(input, dialect, {
+			recursive: true,
+			exclude: [output],
+		});
+
+		for (const file of plan.files) context.addWatchFile(file.path);
+		for (const diagnostic of plan.diagnostics) renderDiagnostic(diagnostic);
+
+		const merged = merger.merge(plan, {
+			addComments: true,
+			includeHeader: true,
+			separateStatements: true,
+		});
+		writeAtomically(merged);
+		logger.success(`SQLsmith: Schema updated -> ${output}`);
+	};
+
+	const runAtBoundary = (context: PluginContext): void => {
+		try {
+			generate(context);
+		} catch (error) {
+			if (command === 'serve') {
+				context.error(error instanceof Error ? error : String(error));
+				return;
+			}
+			throw error;
+		}
+	};
 
 	return {
 		name: 'sqlsmith',
 
 		configResolved(config) {
-			// Auto-enable watching in dev mode
-			if (options.watch === undefined) {
-				options.watch = config.command === 'serve';
-			}
+			command = config.command;
+			watchEnabled = options.watch ?? command === 'serve';
 		},
 
 		buildStart() {
-			pluginContext = this;
-
-			if (isSilent) {
-				return;
-			}
-
-			sqlFiles = discoverSqlFiles(options.input);
-			handleSqlChanges(sqlFiles, logger, options, pluginContext);
+			runAtBoundary(this);
 		},
 
-		async handleHotUpdate(ctx: HmrContext) {
-			// First, check for deleted SQL files and clean up
-			const deletedFiles = sqlFiles.filter((file) => !existsSync(file));
-			if (deletedFiles.length > 0) {
-				deletedFiles.forEach((file) => {
-					if (!isErrorOnly && !isSilent) {
-						logger.info(`🗑️ SQLsmith: SQL file deleted -> ${file}`);
-					}
-				});
-				sqlFiles = sqlFiles.filter((file) => existsSync(file));
-				handleSqlChanges(sqlFiles, logger, options, pluginContext);
-				return [];
-			}
-
-			// Check if the changed file is a SQL file in our input directory
-			if (ctx.file.endsWith('.sql') && isFileInInputDirectory(ctx.file)) {
-				// If it's a new SQL file, add it to our tracking
-				if (!sqlFiles.includes(ctx.file)) {
-					sqlFiles.push(ctx.file);
-					if (!isErrorOnly && !isSilent) {
-						logger.info(`📁 SQLsmith: New SQL file detected -> ${ctx.file}`);
-					}
-				}
-
-				// Regenerate schema when SQL files change
-				handleSqlChanges(sqlFiles, logger, options, pluginContext);
-
-				// Return empty array to prevent default HMR behavior
-				// since we're handling schema generation ourselves
-				return [];
-			}
+		watchChange(id) {
+			if (!watchEnabled || !isRelevantSql(id)) return;
+			runAtBoundary(this);
 		},
 	};
-
-	function handleSqlChanges(
-		sqlFiles: string[],
-		logger: Logger,
-		options: SqlsmithPluginOptions,
-		pluginContext: PluginContext,
-	) {
-		if (!sqlFiles.length) {
-			logger.warn('No SQL files found.');
-			return;
-		}
-
-		// Register SQL files with Vite's watcher
-		if (options.watch) {
-			sqlFiles.forEach((file) => {
-				pluginContext.addWatchFile(file);
-			});
-		}
-
-		try {
-			const resolvedInput = resolve(options.input);
-			const plan = merger.planDirectory(
-				resolvedInput,
-				options.dialect || 'postgresql',
-			);
-
-			const merged = merger.merge(plan, {
-				addComments: true,
-				includeHeader: true,
-				separateStatements: true,
-			});
-
-			writeFileSync(resolve(options.output), merged, 'utf-8');
-
-			if (!isErrorOnly && !isSilent) {
-				logger.success(`SQLsmith: Schema updated -> ${options.output}`);
-			}
-		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : String(error);
-			if (!isSilent) {
-				logger.error(`SQLsmith: Schema merge failed - ${errorMsg}`);
-			}
-
-			// In dev mode, don't throw - just log the error
-			if (!options.watch) {
-				throw error;
-			}
-
-			pluginContext.error(String(error));
-		}
-	}
-
-	function discoverSqlFiles(inputPath: string): string[] {
-		const files: string[] = [];
-		const resolvedPath = resolve(inputPath);
-
-		if (!existsSync(resolvedPath)) {
-			if (!isErrorOnly && !isSilent) {
-				logger.warn(`SQLsmith: Input path does not exist: ${resolvedPath}`);
-			}
-			return files;
-		}
-
-		const discoverRecursive = (dir: string) => {
-			const entries = readdirSync(dir);
-
-			for (const entry of entries) {
-				const fullPath = resolve(dir, entry);
-				const stat = statSync(fullPath);
-
-				if (stat.isDirectory()) {
-					discoverRecursive(fullPath);
-				} else if (entry.endsWith('.sql')) {
-					files.push(fullPath);
-				}
-			}
-		};
-
-		const stat = statSync(resolvedPath);
-		if (stat.isDirectory()) {
-			discoverRecursive(resolvedPath);
-		} else if (resolvedPath.endsWith('.sql')) {
-			files.push(resolvedPath);
-		}
-
-		logger.debug(`SQLsmith: Discovered ${files.length} SQL files`);
-		return files;
-	}
-
-	function isFileInInputDirectory(filePath: string): boolean {
-		const resolvedInput = resolve(options.input);
-		const resolvedFile = resolve(filePath);
-
-		// Check if the file is within the input directory
-		return resolvedFile.startsWith(resolvedInput);
-	}
 };

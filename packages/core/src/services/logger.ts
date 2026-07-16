@@ -1,6 +1,6 @@
 import { format } from 'node:util';
 
-export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
 
 export type LoggerOptions = {
 	logLevel?: LogLevel;
@@ -18,6 +18,7 @@ export class Logger {
 	}
 
 	#shouldLog = (messageLevel: LogLevel): boolean => {
+		if (this.#logLevel === 'silent') return false;
 		const levels: LogLevel[] = ['error', 'warn', 'info', 'debug'];
 		const currentLevelIndex = levels.indexOf(this.#logLevel);
 		const messageLevelIndex = levels.indexOf(messageLevel);

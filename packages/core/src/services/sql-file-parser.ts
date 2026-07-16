@@ -1,5 +1,6 @@
+import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { AST } from 'node-sql-parser';
 import pkg from 'node-sql-parser';
 
@@ -35,35 +36,60 @@ export class SqlFileParser {
 	/**
 	 * Find all SQL files in a directory
 	 */
-	findSqlFiles(directoryPath: string): string[] {
+	findSqlFiles(
+		directoryPath: string,
+		discovery: DiscoveryOptions = {},
+	): string[] {
 		const sqlFiles: string[] = [];
-
-		try {
-			const directoryStats = statSync(directoryPath);
-			if (!directoryStats.isDirectory()) {
-				throw FileSystemError.notDirectory(directoryPath);
+		const root = resolve(directoryPath);
+		const excluded = (discovery.exclude ?? []).map((path) => resolve(path));
+		const isExcluded = (candidate: string): boolean =>
+			excluded.some((excludedPath) => {
+				const pathFromExcluded = relative(excludedPath, candidate);
+				return (
+					pathFromExcluded === '' ||
+					(!pathFromExcluded.startsWith('..') && !isAbsolute(pathFromExcluded))
+				);
+			});
+		const scan = (currentDirectory: string): void => {
+			let entries: Dirent[];
+			try {
+				entries = readdirSync(currentDirectory, { withFileTypes: true });
+			} catch (error: unknown) {
+				throw FileSystemError.directoryNotReadable(
+					currentDirectory,
+					this.#toError(error),
+				);
 			}
-			const entries = readdirSync(directoryPath);
 
-			for (const entry of entries) {
-				const fullPath = join(directoryPath, entry);
-				const stats = statSync(fullPath);
-
-				if (stats.isFile() && extname(entry).toLowerCase() === '.sql') {
+			for (const entry of entries.sort((left, right) =>
+				left.name.localeCompare(right.name),
+			)) {
+				const fullPath = join(currentDirectory, entry.name);
+				if (isExcluded(fullPath)) continue;
+				if (entry.isDirectory()) {
+					if (discovery.recursive) scan(fullPath);
+					continue;
+				}
+				if (entry.isFile() && extname(entry.name).toLowerCase() === '.sql') {
 					sqlFiles.push(fullPath);
 				}
 			}
+		};
 
-			return sqlFiles.sort(); // Sort for consistent ordering
+		try {
+			const directoryStats = statSync(root);
+			if (!directoryStats.isDirectory()) {
+				throw FileSystemError.notDirectory(root);
+			}
+			scan(root);
+			return sqlFiles;
 		} catch (error: unknown) {
 			if (error instanceof SqlMergerError) throw error;
 			if (this.#isNodeError(error) && error.code === 'ENOENT') {
-				throw FileSystemError.directoryNotFound(directoryPath);
+				throw FileSystemError.directoryNotFound(root);
 			}
-			throw FileSystemError.directoryNotReadable(
-				directoryPath,
-				this.#toError(error),
-			);
+			throw FileSystemError.directoryNotReadable(root, this.#toError(error));
 		}
 	}
 
@@ -73,9 +99,9 @@ export class SqlFileParser {
 	parseDirectory(
 		directoryPath: string,
 		dialect: SqlDialect = 'postgresql',
-		_discovery: DiscoveryOptions = {},
+		discovery: DiscoveryOptions = {},
 	): SqlFile[] {
-		const filePaths = this.findSqlFiles(directoryPath);
+		const filePaths = this.findSqlFiles(directoryPath, discovery);
 		const sqlFiles: SqlFile[] = [];
 
 		for (const filePath of filePaths) {

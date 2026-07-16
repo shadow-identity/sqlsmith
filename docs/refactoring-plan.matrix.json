@@ -516,50 +516,43 @@
 			"id": "T5-SUITE",
 			"caseIds": ["C5-SUITE"],
 			"path": "packages/vite-plugin/package.json",
-			"status": "planned",
-			"pendingReason": "The plugin currently has no test script."
+			"status": "executable"
 		},
 		{
 			"id": "T5-NESTED",
 			"caseIds": ["C5-NESTED"],
 			"path": "packages/vite-plugin/src/index.test.ts",
-			"status": "planned",
-			"pendingReason": "The Vite contract suite is created in stage 5."
+			"status": "executable"
 		},
 		{
 			"id": "T5-SILENT",
 			"caseIds": ["C5-SILENT"],
 			"path": "packages/vite-plugin/src/index.test.ts",
-			"status": "planned",
-			"pendingReason": "Silent currently returns before generation."
+			"status": "executable"
 		},
 		{
 			"id": "T5-CONTAINMENT",
 			"caseIds": ["C5-CONTAINMENT"],
 			"path": "packages/vite-plugin/src/index.test.ts",
-			"status": "planned",
-			"pendingReason": "Containment and output exclusion tests are added in stage 5."
+			"status": "executable"
 		},
 		{
 			"id": "T5-WATCH",
 			"caseIds": ["C5-WATCH"],
 			"path": "packages/vite-plugin/src/index.test.ts",
-			"status": "planned",
-			"pendingReason": "Create, update, and delete are unified behind watchChange in stage 5."
+			"status": "executable"
 		},
 		{
 			"id": "T5-ATOMIC",
 			"caseIds": ["C5-ATOMIC"],
 			"path": "packages/vite-plugin/src/index.test.ts",
-			"status": "planned",
-			"pendingReason": "Atomic output and last-good behavior do not exist yet."
+			"status": "executable"
 		},
 		{
 			"id": "T5-COMPAT",
 			"caseIds": ["C5-COMPAT"],
 			"path": "packages/vite-plugin/test/vite-build.integration.test.ts",
-			"status": "planned",
-			"pendingReason": "Vite peer and development majors are currently inconsistent."
+			"status": "executable"
 		},
 		{
 			"id": "T6A-MODEL",

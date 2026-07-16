@@ -85,6 +85,19 @@ describe('Logger', () => {
 			disabled: string[];
 		}> = [
 			{
+				logLevel: 'silent',
+				enabled: [],
+				disabled: [
+					'error',
+					'warn',
+					'info',
+					'debug',
+					'success',
+					'header',
+					'raw',
+				],
+			},
+			{
 				logLevel: 'error',
 				enabled: ['error'],
 				disabled: ['warn', 'info', 'debug', 'success', 'header', 'raw'],
