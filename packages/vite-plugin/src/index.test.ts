@@ -275,4 +275,33 @@ describe('sqlsmith Vite hooks', () => {
 		expect(stderrText().split('unrecognized statement(s)').length - 1).toBe(1);
 		expect(stderrText().split('Schema updated').length - 1).toBe(1);
 	});
+
+	// R5-09 / C5-DEBUG
+	it('renders discovered files, dependency graph and order at debug level', async () => {
+		const plugin = createPlugin('debug');
+		await configure(plugin, context, 'build');
+
+		await callHook(plugin, 'buildStart', context);
+
+		expect(stderrText()).toContain('Discovered 2 SQL file(s)');
+		expect(stderrText()).toContain('users.sql');
+		expect(stderrText()).toContain('posts.sql');
+		expect(stderrText()).toContain('Dependency Graph');
+		expect(stderrText()).toContain('Referenced by: posts');
+		expect(stderrText()).toContain('Recommended execution order');
+		expect(stderrText()).toContain('depends on: users');
+	});
+
+	// R5-09 / C5-DEBUG
+	it('keeps discovery, graph and order details out of info level', async () => {
+		const plugin = createPlugin('info');
+		await configure(plugin, context, 'build');
+
+		await callHook(plugin, 'buildStart', context);
+
+		expect(stderrText()).toContain('Schema updated');
+		expect(stderrText()).not.toContain('Discovered');
+		expect(stderrText()).not.toContain('Dependency Graph');
+		expect(stderrText()).not.toContain('Recommended execution order');
+	});
 });

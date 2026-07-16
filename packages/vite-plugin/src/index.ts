@@ -4,7 +4,10 @@ import {
 	FileSystemError,
 	Logger,
 	type LogLevel,
-	type MergeDiagnostic,
+	renderDependencyGraph,
+	renderDiagnostics,
+	renderDiscoveredFiles,
+	renderRecommendedOrder,
 	type SqlDialect,
 	SqlMerger,
 } from '@sqlsmith/core';
@@ -47,14 +50,6 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		isWithinInput(candidate) &&
 		resolve(candidate) !== output;
 
-	const renderDiagnostic = (diagnostic: MergeDiagnostic): void => {
-		if (diagnostic.code === 'RAW_STATEMENTS') {
-			logger.warn(`${diagnostic.message}: ${diagnostic.statements.join(', ')}`);
-			return;
-		}
-		logger.warn(diagnostic.message);
-	};
-
 	const writeAtomically = (content: string): void => {
 		const temporaryOutput = `${output}.${process.pid}.tmp`;
 		try {
@@ -77,7 +72,14 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		});
 
 		for (const file of plan.files) context.addWatchFile(file.path);
-		for (const diagnostic of plan.diagnostics) renderDiagnostic(diagnostic);
+
+		if (logger.isLevelEnabled('debug')) {
+			renderDiscoveredFiles(logger, plan);
+			renderDependencyGraph(logger, plan);
+			renderRecommendedOrder(logger, plan);
+		}
+
+		renderDiagnostics(logger, plan);
 
 		const merged = merger.merge(plan, {
 			addComments: true,
