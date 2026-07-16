@@ -5,10 +5,11 @@ All notable user-visible changes to SQLsmith are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] — 2026-07-16
 
-Changes delivered on July 15–16, 2026. They will be assigned to a version when
-the next release is prepared.
+A major overhaul of the core pipeline, CLI and Vite plugin. Published as one
+coordinated release of `@sqlsmith/core`, `@sqlsmith/cli` and
+`@sqlsmith/vite-plugin` 0.5.0.
 
 ### Breaking changes
 
