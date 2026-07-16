@@ -40,9 +40,23 @@ explicitly when the effective schema differs.
 - ✅ **Smart dependency detection** - Analyzes FOREIGN KEY constraints
 - ✅ **Topological sorting** - Safe execution order using Kahn's algorithm
 - ✅ **Circular dependency detection** - Prevents invalid schemas
-- ✅ **Multi-dialect support** - PostgreSQL, MySQL, SQLite, BigQuery
-- ✅ **Sequences & Views** - Handles CREATE SEQUENCE and CREATE VIEW statements
+- ✅ **Verified multi-dialect support** - PostgreSQL, SQLite, MySQL
+- ✅ **Sequences & Views** - Handles views in every dialect and PostgreSQL sequences
 - ✅ **TypeScript support** - Full type safety and IntelliSense
+
+### Dialect capabilities
+
+`SUPPORTED_DIALECTS` and `DIALECT_CAPABILITIES` are the authoritative runtime
+registry. A dialect appears here only when its dependency contracts have
+executable fixtures.
+
+<!-- dialect-capabilities:start -->
+| Dialect | Identifier quotes | Case folding used for graph identity | Default namespace | CREATE TABLE | Foreign keys | Views | Sequences |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `postgresql` | `"name"` | Unquoted → lowercase; quoted preserved | `public` | Yes | Yes | Yes | `CREATE SEQUENCE` |
+| `sqlite` | `"name"`, `` `name` `` | Case-insensitive | `main` | Yes | Yes | Yes | None |
+| `mysql` | `` `name` `` | Preserved by SQLsmith; server behavior is configuration-dependent | Current database (implicit) | Yes | Yes | Yes | None |
+<!-- dialect-capabilities:end -->
 
 ## API
 

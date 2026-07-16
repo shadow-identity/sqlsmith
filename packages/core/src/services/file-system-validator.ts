@@ -1,6 +1,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname } from 'node:path';
+import { isSupportedDialect } from '../types/dialect.js';
 import { ConfigurationError, FileSystemError } from '../types/errors.js';
 
 export class FileSystemValidator {
@@ -65,8 +66,7 @@ export class FileSystemValidator {
 	 * Validate SQL dialect
 	 */
 	validateDialect = (dialect: string): void => {
-		const validDialects = ['postgresql', 'mysql', 'sqlite', 'bigquery'];
-		if (!validDialects.includes(dialect)) {
+		if (!isSupportedDialect(dialect)) {
 			throw ConfigurationError.invalidOptions('dialect', dialect);
 		}
 	};

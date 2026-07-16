@@ -9,8 +9,8 @@ pnpm-монорепо `sqlsmith` (https://github.com/shadow-identity/sqlsmith), 
 
 - `packages/core` (`@sqlsmith/core`) — библиотека: парсинг `.sql` (DDL) через
   `node-sql-parser@5.3.10`, граф FK-зависимостей, топологическая сортировка
-  (алгоритм Кана), слияние в один файл. Диалекты: postgresql (основной),
-  sqlite (тестируется), mysql/bigquery (заявлены, не тестируются).
+  (алгоритм Кана), слияние в один файл. Верифицированные диалекты:
+  postgresql, sqlite и mysql; BigQuery снят с публичного контракта.
 - `packages/cli` (`@sqlsmith/cli`) — команды `merge` (default), `info`, `validate`.
 - `packages/vite-plugin` (`@sqlsmith/vite-plugin`) — пересборка merged-схемы на HMR.
 
@@ -549,6 +549,10 @@ workspace build/test/Biome зелёные.
 
 ## Этап 6c — честный контракт поддерживаемых диалектов
 
+**Статус: completed.** Все C6C-трассы executable; capability registry,
+dialect adapters, документация и P0 fixtures синхронизированы для PostgreSQL,
+SQLite и MySQL. Финальный complete guard и полный workspace regression зелёные.
+
 ### Требования
 
 - **R6C-01 (P0):** для каждого advertised dialect есть capability matrix:
@@ -579,6 +583,20 @@ MySQL/BigQuery остаются в public union только если весь P
 3. Добавить fixtures/goldens и README matrix с конкретными ограничениями.
 4. Удалить старые общие заявления «works across all SQL dialects», если они не
    подтверждены executable cases.
+
+### Результат capability gate
+
+- PostgreSQL: table/FK/view/sequence проходят; остаётся default dialect.
+- SQLite: table/FK/view проходят; `CREATE SEQUENCE` честно помечен как
+  отсутствующий, graph identity case-insensitive с namespace `main`.
+- MySQL: table/FK/view проходят и получили backtick-aware lexer, golden,
+  duplicate и missing fixtures; sequence semantics отсутствуют. SQLsmith
+  сохраняет регистр, поскольку фактическая чувствительность MySQL зависит от
+  конфигурации сервера.
+- BigQuery: исключён из `SqlDialect`, CLI, plugin docs и README. Локальный
+  `node-sql-parser@5.3.10` не разобрал обязательный FK case, а текущая relation
+  model не представляет `project.dataset.table` без потери идентичности.
+  Возврат поддержки требует отдельной трёхчастной identifier model и fixtures.
 
 ### Definition of done 6c / конец программы
 

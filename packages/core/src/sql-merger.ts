@@ -277,15 +277,15 @@ export class SqlMerger {
 	}
 }
 
+export type { SqlDialect } from './types/dialect.js';
 export type {
+	DialectRules,
 	IdentifierPart,
-	IdentifierRules,
 	RelationIdentifier,
 	RelationKey,
 } from './types/relation-identifier.js';
 export type {
 	Dependency,
-	SqlDialect,
 	SqlFile,
 	SqlStatement,
 	StatementType,

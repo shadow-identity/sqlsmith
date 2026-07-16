@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { type SqlDialect, SqlMerger } from '../src/sql-merger.js';
+import { SUPPORTED_DIALECTS } from '../src/index.js';
+import { SqlMerger } from '../src/sql-merger.js';
+import { ErrorCode } from '../src/types/errors.js';
 
-// C3-REGRESSION / C4-GOLDEN / R3-06 / R4-06
+// C3-REGRESSION / C4-GOLDEN / C6C-GOLDEN / R3-06 / R4-06 / R6C-03
 
 /**
  * Golden-file contract: for every correct scenario with a
@@ -25,18 +27,12 @@ const normalizeSql = (sql: string): string =>
 		.trim();
 
 describe('golden output', () => {
-	const dialects: SqlDialect[] = ['postgresql', 'sqlite'];
-
-	dialects.forEach((dialect) => {
+	SUPPORTED_DIALECTS.forEach((dialect) => {
 		describe(`${dialect} dialect`, () => {
 			const correctDir = resolve(
 				process.cwd(),
 				`test/fixtures/${dialect}/correct`,
 			);
-			if (!existsSync(correctDir)) {
-				return;
-			}
-
 			const scenarios = readdirSync(correctDir)
 				.filter((entry) => statSync(resolve(correctDir, entry)).isDirectory())
 				.filter((entry) =>
@@ -63,6 +59,37 @@ describe('golden output', () => {
 
 					expect(normalizeSql(merged)).toBe(normalizeSql(golden));
 				});
+			});
+
+			it('covers base table, FK and view dependency ordering', () => {
+				const merger = new SqlMerger();
+				const plan = merger.planDirectory(
+					resolve(correctDir, 'dialect_contract'),
+					dialect,
+				);
+				const ordered = plan.orderedStatements.map(
+					(statement) => statement.identifier?.name.canonical,
+				);
+
+				expect(plan.statements.map(({ type }) => type)).toEqual(
+					expect.arrayContaining(['table', 'table', 'view']),
+				);
+				expect(ordered).toEqual(['users', 'orders', 'user_orders']);
+			});
+
+			it.each([
+				['duplicate_table_names', ErrorCode.DUPLICATE_STATEMENT_NAMES],
+				['missing_dependency', ErrorCode.MISSING_DEPENDENCY],
+			] as const)('covers invalid fixture %s', (scenario, code) => {
+				expect(() =>
+					new SqlMerger().planDirectory(
+						resolve(
+							process.cwd(),
+							`test/fixtures/${dialect}/invalid/${scenario}`,
+						),
+						dialect,
+					),
+				).toThrowError(expect.objectContaining({ code }));
 			});
 		});
 	});

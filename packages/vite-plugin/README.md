@@ -34,7 +34,7 @@ export default defineConfig({
 
 - `input` (required): Directory containing SQL files
 - `output` (required): Output file path for merged schema
-- `dialect` (optional): SQL dialect - `postgresql`, `mysql`, `sqlite`, `bigquery` (default: `postgresql`)
+- `dialect` (optional): SQL dialect from core's `SUPPORTED_DIALECTS` registry (default: `postgresql`)
 - `defaultSchema` (optional): Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `watch` (optional): Enable file watching (default: auto-detected based on dev/build mode)
 - `logLevel` (optional): Shared SQLsmith log level: `silent`, `error`, `warn`, `info`, or `debug` (default: `info`)

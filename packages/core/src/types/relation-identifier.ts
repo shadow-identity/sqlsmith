@@ -1,4 +1,8 @@
-import type { SqlDialect } from './sql-statement.js';
+import {
+	DIALECT_CAPABILITIES,
+	type DialectCapabilities,
+	type SqlDialect,
+} from './dialect.js';
 
 declare const relationKeyBrand: unique symbol;
 
@@ -32,8 +36,9 @@ export interface RelationIdentifier {
 	readonly key: RelationKey;
 }
 
-export interface IdentifierRules {
+export interface DialectRules {
 	readonly dialect: SqlDialect;
+	readonly capabilities: Readonly<DialectCapabilities>;
 	readonly defaultSchema: SourceIdentifierPart;
 	canonicalize(value: string, quoted: boolean): string;
 }
@@ -46,24 +51,39 @@ const sourcePart = (
 
 const configuredSchemaPart = (schema: string): SourceIdentifierPart => {
 	const trimmed = schema.trim();
-	if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
+	if (trimmed.length < 2) return sourcePart(trimmed);
+	if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
 		return sourcePart(trimmed.slice(1, -1).replace(/""/g, '"'), trimmed, true);
+	}
+	if (trimmed.startsWith('`') && trimmed.endsWith('`')) {
+		return sourcePart(trimmed.slice(1, -1).replace(/``/g, '`'), trimmed, true);
+	}
+	if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+		return sourcePart(trimmed.slice(1, -1).replace(/]]/g, ']'), trimmed, true);
 	}
 	return sourcePart(trimmed);
 };
 
 /** Create dialect-specific canonicalization rules for relation identifiers. */
-export const createIdentifierRules = (
+export const createDialectRules = (
 	dialect: SqlDialect,
 	defaultSchema?: string,
-): IdentifierRules => {
-	const schema = defaultSchema ?? (dialect === 'postgresql' ? 'public' : '');
+): DialectRules => {
+	const capabilities = DIALECT_CAPABILITIES[dialect];
+	const schema = defaultSchema ?? capabilities.defaultNamespace;
 	return Object.freeze({
 		dialect,
+		capabilities,
 		defaultSchema: Object.freeze(configuredSchemaPart(schema)),
 		canonicalize(value: string, quoted: boolean): string {
-			if (dialect === 'postgresql' && !quoted) return value.toLowerCase();
-			return value;
+			switch (capabilities.caseFolding) {
+				case 'lowercase-unquoted':
+					return quoted ? value : value.toLowerCase();
+				case 'case-insensitive':
+					return value.toLowerCase();
+				case 'preserve':
+					return value;
+			}
 		},
 	});
 };
@@ -71,7 +91,7 @@ export const createIdentifierRules = (
 const identifierPart = (
 	part: SourceIdentifierPart,
 	explicit: boolean,
-	rules: IdentifierRules,
+	rules: DialectRules,
 ): IdentifierPart =>
 	Object.freeze({
 		value: part.value,
@@ -84,7 +104,7 @@ const identifierPart = (
 /** Build an immutable relation identifier without reconstructing source SQL. */
 export const createRelationIdentifier = (
 	source: SourceRelationName,
-	rules: IdentifierRules,
+	rules: DialectRules,
 ): RelationIdentifier => {
 	const schema = identifierPart(
 		source.schema ?? rules.defaultSchema,

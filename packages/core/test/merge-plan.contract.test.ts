@@ -6,7 +6,7 @@ import type { Logger } from '../src/services/logger.js';
 import { SqlMerger } from '../src/sql-merger.js';
 import { DependencyError, ErrorCode } from '../src/types/errors.js';
 import {
-	createIdentifierRules,
+	createDialectRules,
 	createRelationIdentifier,
 	unquotedRelationName,
 } from '../src/types/relation-identifier.js';
@@ -20,7 +20,7 @@ const fixture = (scenario: string): string =>
 const relation = (name: string) =>
 	createRelationIdentifier(
 		unquotedRelationName(name),
-		createIdentifierRules('postgresql'),
+		createDialectRules('postgresql'),
 	);
 
 const silentLogger = (): Logger =>

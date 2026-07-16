@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { SUPPORTED_DIALECTS } from '@sqlsmith/core';
 import { Command, Option } from 'commander';
 import {
 	executeInfoCommand,
@@ -17,6 +18,7 @@ import {
 } from './utils.js';
 
 const VERSION = getVersion();
+const DIALECT_HELP = `SQL dialect (${SUPPORTED_DIALECTS.join(', ')})`;
 
 /**
  * Create and configure the CLI program
@@ -34,11 +36,7 @@ export const createProgram = (): Command => {
 	program
 		.argument('<input>', 'Input directory containing SQL files')
 		.option('-o, --output <path>', 'Output file path (default: stdout)')
-		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
-		)
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
 			'--no-validate-source-order',
 			'Skip validation that statements within a file are declared before their dependents',
@@ -78,11 +76,7 @@ export const createProgram = (): Command => {
 		.command('info')
 		.description('Analyze SQL file dependencies without merging')
 		.argument('<input>', 'Input directory containing SQL files')
-		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
-		)
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
 			'--allow-external-references',
 			'Allow foreign keys referencing tables outside the input files',
@@ -111,11 +105,7 @@ export const createProgram = (): Command => {
 		.command('validate')
 		.description('Validate SQL files and check for circular dependencies')
 		.argument('<input>', 'Input directory containing SQL files')
-		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
-		)
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
 			'--allow-external-references',
 			'Allow foreign keys referencing tables outside the input files',

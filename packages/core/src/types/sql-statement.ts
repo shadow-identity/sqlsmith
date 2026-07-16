@@ -1,6 +1,8 @@
 import type { AST } from 'node-sql-parser';
 import type { RelationIdentifier } from './relation-identifier.js';
 
+export type { SqlDialect } from './dialect.js';
+
 export type StatementType =
 	| 'table'
 	| 'view'
@@ -9,8 +11,6 @@ export type StatementType =
 	| 'function'
 	/** A statement no processor recognizes; carried through the merge verbatim. */
 	| 'raw';
-
-export type SqlDialect = 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
 
 export interface Dependency {
 	/** Canonical relation identity used for matching and graph operations. */

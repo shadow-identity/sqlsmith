@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSystemValidator } from '../src/services/file-system-validator.js';
+import { SUPPORTED_DIALECTS } from '../src/types/dialect.js';
 import {
 	type ConfigurationError,
 	ErrorCode,
@@ -126,12 +127,9 @@ describe('FileSystemValidator typed contracts', () => {
 		);
 	});
 
-	it.each(['postgresql', 'mysql', 'sqlite', 'bigquery'])(
-		'accepts supported dialect %s',
-		(dialect) => {
-			expect(() => validator.validateDialect(dialect)).not.toThrow();
-		},
-	);
+	it.each(SUPPORTED_DIALECTS)('accepts supported dialect %s', (dialect) => {
+		expect(() => validator.validateDialect(dialect)).not.toThrow();
+	});
 
 	it('reports unsupported dialects as configuration errors', () => {
 		expect(() => validator.validateDialect('oracle')).toThrowError(

@@ -1,16 +1,22 @@
 import { ProcessingError } from '../types/errors.js';
 import {
 	createRelationIdentifier,
-	type IdentifierRules,
+	type DialectRules,
 	type RelationIdentifier,
 	type RelationKey,
 	type SourceIdentifierPart,
 	type SourceRelationName,
 	unquotedRelationName,
 } from '../types/relation-identifier.js';
+import {
+	type DialectAstAdapter,
+	type DialectFromItem,
+	getDialectAstAdapter,
+} from './dialect-ast-adapter.js';
 
 export interface SelectRelationCollectorOptions {
-	readonly identifierRules: IdentifierRules;
+	readonly identifierRules: DialectRules;
+	readonly dialectAdapter?: DialectAstAdapter;
 	/** Source-ordered FROM/JOIN names used to restore AST-lost quote metadata. */
 	readonly sourceRelations?: readonly SourceRelationName[];
 	readonly sourceCteAliases?: readonly SourceIdentifierPart[];
@@ -40,12 +46,9 @@ const isSelect = (value: unknown): value is SelectRecord =>
 class SourceRelationResolver {
 	readonly #relations: readonly SourceRelationName[];
 	readonly #used = new Set<number>();
-	readonly #rules: IdentifierRules;
+	readonly #rules: DialectRules;
 
-	constructor(
-		relations: readonly SourceRelationName[],
-		rules: IdentifierRules,
-	) {
+	constructor(relations: readonly SourceRelationName[], rules: DialectRules) {
 		this.#relations = relations;
 		this.#rules = rules;
 	}
@@ -145,6 +148,9 @@ export const collectSelectRelations = (
 		options.sourceCteAliases ?? [],
 	);
 	const visitedExpressions = new WeakSet<object>();
+	const adapter =
+		options.dialectAdapter ??
+		getDialectAstAdapter(options.identifierRules.dialect);
 
 	const unsupported = (path: string, value: unknown): never => {
 		throw ProcessingError.unsupportedSelectShape(path, shapeOf(value));
@@ -210,16 +216,15 @@ export const collectSelectRelations = (
 	};
 
 	const addFromItem = (
-		item: unknown,
+		item: DialectFromItem,
 		scope: ReadonlySet<string>,
 		path: string,
 	): void => {
-		const fromItem = isRecord(item) ? item : unsupported(path, item);
-		if (fromItem.type === 'dual') return;
+		if (item.kind === 'dual') return;
 
-		if (typeof fromItem.table === 'string') {
-			const schema = typeof fromItem.db === 'string' ? fromItem.db : undefined;
-			const source = resolver.resolve(fromItem.table, schema);
+		if (item.kind === 'relation') {
+			const { name, schema } = item.relation;
+			const source = resolver.resolve(name, schema);
 			const localAlias = options.identifierRules.canonicalize(
 				source.name.value,
 				source.name.quoted,
@@ -233,17 +238,17 @@ export const collectSelectRelations = (
 				relations.set(identifier.key, identifier);
 				keys.add(identifier.key);
 			}
-			if ('on' in fromItem) walkExpression(fromItem.on, scope, `${path}.on`);
+			walkExpression(item.on, scope, `${path}.on`);
 			return;
 		}
 
-		if (isRecord(fromItem.expr) && 'ast' in fromItem.expr) {
-			walkExpression(fromItem.expr, scope, `${path}.expr`);
-			if ('on' in fromItem) walkExpression(fromItem.on, scope, `${path}.on`);
+		if (item.kind === 'derived') {
+			walkExpression(item.expression, scope, `${path}.expr`);
+			walkExpression(item.on, scope, `${path}.on`);
 			return;
 		}
 
-		unsupported(path, fromItem);
+		unsupported(path, item.value);
 	};
 
 	const walkSelect = (
@@ -281,9 +286,7 @@ export const collectSelectRelations = (
 
 		walkExpression(selectNode.columns, scope, `${path}.columns`);
 
-		const from = selectNode.from ?? [];
-		const fromEntries = Array.isArray(from) ? from : [from];
-		fromEntries.forEach((item, index) => {
+		adapter.selectFromItems(selectNode).forEach((item, index) => {
 			addFromItem(item, scope, `${path}.from[${index}]`);
 		});
 

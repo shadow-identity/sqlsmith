@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { SUPPORTED_DIALECTS } from '@sqlsmith/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
@@ -105,6 +106,15 @@ describe('sqlsmith CLI (end-to-end)', () => {
 
 	afterAll(() => {
 		rmSync(scratchDir, { recursive: true, force: true });
+	});
+
+	// C6C-REGISTRY / R6C-02
+	it('advertises the dialects from the core registry', async () => {
+		const { stdout, exitCode } = await runCli(['--help']);
+
+		expect(exitCode).toBe(0);
+		expect(stdout).toContain(`SQL dialect (${SUPPORTED_DIALECTS.join(', ')})`);
+		expect(stdout).not.toContain('bigquery');
 	});
 
 	describe('merge to stdout (default)', () => {

@@ -15,12 +15,13 @@ import {
 	SqlMergerError,
 } from '../types/errors.js';
 import type { DiscoveryOptions } from '../types/merge-plan.js';
-import { createIdentifierRules } from '../types/relation-identifier.js';
+import { createDialectRules } from '../types/relation-identifier.js';
 import type {
 	SqlDialect,
 	SqlFile,
 	SqlStatement,
 } from '../types/sql-statement.js';
+import { getDialectAstAdapter } from './dialect-ast-adapter.js';
 import { scanCteAliases, scanRelationNames } from './sql-identifier-lexer.js';
 import { splitSqlStatements } from './sql-statement-splitter.js';
 
@@ -164,9 +165,10 @@ export class SqlFileParser {
 			const processorContext: StatementProcessorContext = {
 				source,
 				dialect,
-				identifierRules: createIdentifierRules(dialect, this.#defaultSchema),
-				relationNames: scanRelationNames(source),
-				cteAliases: scanCteAliases(source),
+				identifierRules: createDialectRules(dialect, this.#defaultSchema),
+				dialectAdapter: getDialectAstAdapter(dialect),
+				relationNames: scanRelationNames(source, dialect),
+				cteAliases: scanCteAliases(source, dialect),
 			};
 
 			let ast: AST | AST[];

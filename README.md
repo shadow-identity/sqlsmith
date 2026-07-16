@@ -11,7 +11,7 @@ A sophisticated tool for merging SQL files with automatic dependency resolution 
 📋 **Statement Order Validation** - Ensures CREATE TABLE statements within files follow dependency order  
 📁 **File & Stdout Output** - Flexible output options for CI/CD and manual workflows  
 🎛️ **Configurable Options** - Control comments, headers, formatting, and validation behavior  
-🗃️ **Multi-Dialect Support** - PostgreSQL, MySQL, SQLite, and BigQuery  
+🗃️ **Verified Multi-Dialect Support** - PostgreSQL, SQLite, and MySQL
 ⚡ **Fast & Reliable** - Built with TypeScript and comprehensive test coverage  
 
 ### **Scope & Focus**
@@ -113,7 +113,7 @@ sqlsmith <input-directory> [options]
 
 **Options:**
 - `-o, --output <path>` - Output file path (default: stdout; stdout carries only the merged SQL, all logs go to stderr)
-- `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery (default: postgresql)
+- `-d, --dialect <dialect>` - SQL dialect: postgresql, sqlite, mysql (default: postgresql)
 - `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--no-validate-source-order` - Skip validation that statements within a file are declared before their dependents
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
@@ -461,10 +461,20 @@ $ sqlsmith ./nonexistent
 
 ## Supported SQL Dialects
 
-- **PostgreSQL** (default) - Full FOREIGN KEY constraint support
-- **MySQL** - Supports FOREIGN KEY and REFERENCES syntax  
-- **SQLite** - Basic FOREIGN KEY support
-- **BigQuery** - Limited constraint support
+Only dialects backed by parse, dependency-order, invalid-case, and golden
+fixtures are advertised. `SUPPORTED_DIALECTS` and `DIALECT_CAPABILITIES` from
+`@sqlsmith/core` are the authoritative runtime registry.
+
+<!-- dialect-capabilities:start -->
+| Dialect | Identifier quotes | Case folding used for graph identity | Default namespace | CREATE TABLE | Foreign keys | Views | Sequences |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `postgresql` | `"name"` | Unquoted → lowercase; quoted preserved | `public` | Yes | Yes | Yes | `CREATE SEQUENCE` |
+| `sqlite` | `"name"`, `` `name` `` | Case-insensitive | `main` | Yes | Yes | Yes | None |
+| `mysql` | `` `name` `` | Preserved by SQLsmith; server behavior is configuration-dependent | Current database (implicit) | Yes | Yes | Yes | None |
+<!-- dialect-capabilities:end -->
+
+BigQuery is intentionally not public: the current parser/model contract does
+not cover BigQuery foreign keys or three-part `project.dataset.table` identity.
 
 ## Configuration Options
 

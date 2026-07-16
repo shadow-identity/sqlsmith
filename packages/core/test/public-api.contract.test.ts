@@ -1,15 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as publicApi from '../src/index.js';
 import type { StatementProcessor } from '../src/processors/base-processor.js';
+import { FileSystemValidator } from '../src/services/file-system-validator.js';
 import { SqlMerger, type SqlMergerDependencies } from '../src/sql-merger.js';
+import { SUPPORTED_DIALECTS } from '../src/types/dialect.js';
 import {
-	createIdentifierRules,
+	createDialectRules,
 	createRelationIdentifier,
 	unquotedRelationName,
 } from '../src/types/relation-identifier.js';
 import type { SqlFile } from '../src/types/sql-statement.js';
 
-// C4-CONSTRUCTOR / R4-01 / R4-07
+// C4-CONSTRUCTOR / C6C-REGISTRY / R4-01 / R4-07 / R6C-02
 
 describe('public construction contract', () => {
 	it('does not expose the removed service-locator API', () => {
@@ -20,7 +24,7 @@ describe('public construction contract', () => {
 	it('accepts narrow typed dependencies without a container', () => {
 		const identifier = createRelationIdentifier(
 			unquotedRelationName('users'),
-			createIdentifierRules('postgresql'),
+			createDialectRules('postgresql'),
 		);
 		const file: SqlFile = {
 			path: '/virtual/schema.sql',
@@ -63,4 +67,30 @@ describe('public construction contract', () => {
 
 		expect(merger.getSupportedTypes()).toContain('custom');
 	});
+
+	it('uses one exported registry for the runtime API and validation', () => {
+		expect(SUPPORTED_DIALECTS).toEqual(['postgresql', 'sqlite', 'mysql']);
+		expect(publicApi.SUPPORTED_DIALECTS).toBe(SUPPORTED_DIALECTS);
+
+		const validator = new FileSystemValidator();
+		for (const dialect of SUPPORTED_DIALECTS) {
+			expect(() => validator.validateDialect(dialect)).not.toThrow();
+		}
+		expect(() => validator.validateDialect('bigquery')).toThrow();
+	});
+
+	it.each(['../../README.md', 'README.md'])(
+		'keeps the documented capability rows aligned in %s',
+		(readme) => {
+			const content = readFileSync(resolve(process.cwd(), readme), 'utf8');
+			const matrix = content.match(
+				/<!-- dialect-capabilities:start -->([\s\S]*?)<!-- dialect-capabilities:end -->/u,
+			)?.[1];
+			const documented = [
+				...(matrix ?? '').matchAll(/^\| `([^`]+)` \|/gmu),
+			].map(([, dialect]) => dialect);
+
+			expect(documented).toEqual(SUPPORTED_DIALECTS);
+		},
+	);
 });

@@ -45,7 +45,7 @@ sqlsmith validate <input-directory> [options]
 ## Options
 
 - `-o, --output <path>` - Output file path (default: stdout)
-- `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery
+- `-d, --dialect <dialect>` - SQL dialect from core's `SUPPORTED_DIALECTS` registry
 - `--default-schema <schema>` - Schema assigned to unqualified names (PostgreSQL default: `public`)
 - `--allow-reorder-drop-comments` - Allow reordering statements within files (drops comments)
 - `--log-level <level>` - Set log level: error, warn, info, debug (default: info)

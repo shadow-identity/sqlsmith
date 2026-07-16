@@ -618,29 +618,25 @@
 			"id": "T6C-CAPABILITY",
 			"caseIds": ["C6C-CAPABILITY"],
 			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "The executable dialect capability matrix is added in stage 6c."
+			"status": "executable"
 		},
 		{
 			"id": "T6C-REGISTRY",
 			"caseIds": ["C6C-REGISTRY"],
 			"path": "packages/core/test/public-api.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "A shared supported-dialect registry is introduced in stage 6c."
+			"status": "executable"
 		},
 		{
 			"id": "T6C-GOLDEN",
 			"caseIds": ["C6C-GOLDEN"],
 			"path": "packages/core/test/golden-output.test.ts",
-			"status": "planned",
-			"pendingReason": "Capability-gated dialect fixtures are completed in stage 6c."
+			"status": "executable"
 		},
 		{
 			"id": "T6C-ADAPTER",
 			"caseIds": ["C6C-ADAPTER"],
 			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Dialect adapters and their common-model contract are added in stage 6c."
+			"status": "executable"
 		}
 	],
 	"acceptance": {

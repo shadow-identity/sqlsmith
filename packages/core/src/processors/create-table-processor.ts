@@ -1,9 +1,9 @@
-import type { AST, Create as CreateTable } from 'node-sql-parser';
+import type { AST } from 'node-sql-parser';
+import { getDialectAstAdapter } from '../services/dialect-ast-adapter.js';
 import {
-	createIdentifierRules,
+	createDialectRules,
 	createRelationIdentifier,
-	type IdentifierRules,
-	type SourceRelationName,
+	type DialectRules,
 	unquotedRelationName,
 } from '../types/relation-identifier.js';
 import type { Dependency, SqlStatement } from '../types/sql-statement.js';
@@ -27,29 +27,29 @@ export class CreateTableProcessor implements StatementProcessor {
 		context?: StatementProcessorContext,
 	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
-		const rules =
-			context?.identifierRules ?? createIdentifierRules('postgresql');
+		const rules = context?.identifierRules ?? createDialectRules('postgresql');
+		const adapter =
+			context?.dialectAdapter ??
+			getDialectAstAdapter(context?.dialect ?? 'postgresql');
 
 		const astArray = Array.isArray(ast) ? ast : [ast];
 
 		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
 				const dependencies = this.#extractTableDependencies(
-					statement as CreateTable,
+					statement,
 					context,
 					rules,
 				);
-				const tableReference = (statement as CreateTable).table?.[0] as
-					| { db?: string | null; table?: string }
-					| undefined;
+				const declaration = adapter.declaration(statement, 'table');
 				const source =
 					context?.relationNames.find(
 						(relation) =>
 							relation.role === 'declaration' &&
 							relation.statementType === 'table',
 					) ??
-					(tableReference?.table
-						? unquotedRelationName(tableReference.table, tableReference.db)
+					(declaration
+						? unquotedRelationName(declaration.name, declaration.schema)
 						: undefined);
 
 				if (source) {
@@ -71,9 +71,9 @@ export class CreateTableProcessor implements StatementProcessor {
 	}
 
 	#extractTableDependencies(
-		statement: CreateTable,
+		statement: AST,
 		context: StatementProcessorContext | undefined,
-		rules: IdentifierRules,
+		rules: DialectRules,
 	): Dependency[] {
 		const dependencies: Dependency[] = [];
 		const seen = new Set<string>();
@@ -84,35 +84,22 @@ export class CreateTableProcessor implements StatementProcessor {
 					relation.referenceKind === 'references',
 			) ?? [];
 		let referenceIndex = 0;
+		const adapter =
+			context?.dialectAdapter ??
+			getDialectAstAdapter(context?.dialect ?? 'postgresql');
 
-		if (statement.create_definitions) {
-			for (const definition of statement.create_definitions) {
-				// Both constraint-level FOREIGN KEYs and column-level REFERENCES
-				// carry a reference_definition — one check covers both shapes.
-				if (
-					'reference_definition' in definition &&
-					definition.reference_definition &&
-					Array.isArray(definition.reference_definition.table)
-				) {
-					for (const tbl of definition.reference_definition.table) {
-						const astTable = tbl as { db?: string | null; table?: string };
-						const source: SourceRelationName | undefined =
-							lexicalReferences[referenceIndex++] ??
-							(astTable.table
-								? unquotedRelationName(astTable.table, astTable.db)
-								: undefined);
-						if (!source) continue;
-						const identifier = createRelationIdentifier(source, rules);
-						if (seen.has(identifier.key)) continue;
-						seen.add(identifier.key);
-						dependencies.push({
-							identifier,
-							name: identifier.display,
-							type: 'table',
-						});
-					}
-				}
-			}
+		for (const reference of adapter.tableReferences(statement)) {
+			const source =
+				lexicalReferences[referenceIndex++] ??
+				unquotedRelationName(reference.name, reference.schema);
+			const identifier = createRelationIdentifier(source, rules);
+			if (seen.has(identifier.key)) continue;
+			seen.add(identifier.key);
+			dependencies.push({
+				identifier,
+				name: identifier.display,
+				type: 'table',
+			});
 		}
 
 		return dependencies;

@@ -1,6 +1,7 @@
 import type { AST } from 'node-sql-parser';
+import { getDialectAstAdapter } from '../services/dialect-ast-adapter.js';
 import {
-	createIdentifierRules,
+	createDialectRules,
 	createRelationIdentifier,
 	unquotedRelationName,
 } from '../types/relation-identifier.js';
@@ -35,28 +36,22 @@ export class CreateSequenceProcessor implements StatementProcessor {
 	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
 		const astArray = Array.isArray(ast) ? ast : [ast];
-		const rules =
-			context?.identifierRules ?? createIdentifierRules('postgresql');
+		const rules = context?.identifierRules ?? createDialectRules('postgresql');
+		const adapter =
+			context?.dialectAdapter ??
+			getDialectAstAdapter(context?.dialect ?? 'postgresql');
 
 		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				const record = statement as unknown as Record<string, unknown>;
-				const sequence = Array.isArray(record.sequence)
-					? (
-							record.sequence as Array<{
-								db?: string | null;
-								table?: string;
-							}>
-						).at(0)
-					: undefined;
+				const declaration = adapter.declaration(statement, 'sequence');
 				const source =
 					context?.relationNames.find(
 						(relation) =>
 							relation.role === 'declaration' &&
 							relation.statementType === 'sequence',
 					) ??
-					(sequence?.table
-						? unquotedRelationName(sequence.table, sequence.db)
+					(declaration
+						? unquotedRelationName(declaration.name, declaration.schema)
 						: undefined);
 
 				if (source) {

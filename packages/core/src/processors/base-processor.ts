@@ -1,7 +1,8 @@
 import type { AST } from 'node-sql-parser';
+import type { DialectAstAdapter } from '../services/dialect-ast-adapter.js';
 import type { LexedRelationName } from '../services/sql-identifier-lexer.js';
 import type {
-	IdentifierRules,
+	DialectRules,
 	SourceIdentifierPart,
 } from '../types/relation-identifier.js';
 import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
@@ -9,7 +10,8 @@ import type { SqlDialect, SqlStatement } from '../types/sql-statement.js';
 export interface StatementProcessorContext {
 	readonly source: string;
 	readonly dialect: SqlDialect;
-	readonly identifierRules: IdentifierRules;
+	readonly identifierRules: DialectRules;
+	readonly dialectAdapter?: DialectAstAdapter;
 	readonly relationNames: readonly LexedRelationName[];
 	readonly cteAliases: readonly SourceIdentifierPart[];
 }

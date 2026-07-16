@@ -1,3 +1,4 @@
+import { DIALECT_CAPABILITIES, type SqlDialect } from '../types/dialect.js';
 import type {
 	SourceIdentifierPart,
 	SourceRelationName,
@@ -25,8 +26,42 @@ const isWordStart = (character: string): boolean =>
 const isWordPart = (character: string): boolean =>
 	/[A-Za-z0-9_$\u0080-\uFFFF]/u.test(character);
 
-const tokenize = (sql: string): Token[] => {
+const tokenizeQuotedIdentifier = (
+	sql: string,
+	start: number,
+	quote: '"' | '`' | '[]',
+): { readonly token: Token; readonly next: number } => {
+	const opening = quote === '[]' ? '[' : quote;
+	const closing = quote === '[]' ? ']' : quote;
+	let index = start + opening.length;
+	let value = '';
+	while (index < sql.length) {
+		if (sql[index] !== closing) {
+			value += sql[index];
+			index++;
+			continue;
+		}
+		if (sql[index + 1] === closing) {
+			value += closing;
+			index += 2;
+			continue;
+		}
+		index++;
+		break;
+	}
+	return {
+		token: {
+			kind: 'quoted',
+			value,
+			display: sql.slice(start, index),
+		},
+		next: index,
+	};
+};
+
+const tokenize = (sql: string, dialect: SqlDialect): Token[] => {
 	const tokens: Token[] = [];
+	const quoteSyntax = DIALECT_CAPABILITIES[dialect].quoteSyntax;
 	let index = 0;
 
 	while (index < sql.length) {
@@ -89,29 +124,13 @@ const tokenize = (sql: string): Token[] => {
 				continue;
 			}
 		}
-		if (character === '"') {
-			const start = index;
-			let value = '';
-			index++;
-			while (index < sql.length) {
-				if (sql[index] !== '"') {
-					value += sql[index];
-					index++;
-					continue;
-				}
-				if (sql[index + 1] === '"') {
-					value += '"';
-					index += 2;
-					continue;
-				}
-				index++;
-				break;
-			}
-			tokens.push({
-				kind: 'quoted',
-				value,
-				display: sql.slice(start, index),
-			});
+		const quote = quoteSyntax.find(
+			(syntax) => character === (syntax === '[]' ? '[' : syntax),
+		);
+		if (quote) {
+			const quoted = tokenizeQuotedIdentifier(sql, index, quote);
+			tokens.push(quoted.token);
+			index = quoted.next;
 			continue;
 		}
 		if (isWordStart(character)) {
@@ -164,8 +183,11 @@ const closingParenthesis = (
 };
 
 /** Extract WITH aliases with their original quote metadata. */
-export const scanCteAliases = (sql: string): SourceIdentifierPart[] => {
-	const tokens = tokenize(sql);
+export const scanCteAliases = (
+	sql: string,
+	dialect: SqlDialect = 'postgresql',
+): SourceIdentifierPart[] => {
+	const tokens = tokenize(sql, dialect);
 	const aliases: SourceIdentifierPart[] = [];
 
 	const scanRange = (start: number, end: number): void => {
@@ -277,8 +299,11 @@ const declarationType = (
  * Scan only relation-name positions in original SQL. This deliberately avoids
  * reconstructing identifiers from an AST, because ASTs discard quote metadata.
  */
-export const scanRelationNames = (sql: string): LexedRelationName[] => {
-	const tokens = tokenize(sql);
+export const scanRelationNames = (
+	sql: string,
+	dialect: SqlDialect = 'postgresql',
+): LexedRelationName[] => {
+	const tokens = tokenize(sql, dialect);
 	const relations: LexedRelationName[] = [];
 
 	for (let index = 0; index < tokens.length; index++) {

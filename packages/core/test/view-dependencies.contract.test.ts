@@ -203,7 +203,7 @@ UNION (SELECT id FROM public.users);`,
 					columns: [],
 				},
 				{
-					identifierRules: publicApi.createIdentifierRules('postgresql'),
+					identifierRules: publicApi.createDialectRules('postgresql'),
 				},
 			);
 			expect.unreachable('Unknown SELECT relation shape must be rejected');

@@ -69,14 +69,14 @@ export default defineConfig({
 ```typescript
 // src/plugin.ts
 import type { Plugin } from 'vite'
-import { SqlMerger } from 'sqlsmith'
+import { SqlMerger, type SqlDialect } from 'sqlsmith'
 import { watch } from 'chokidar'
 import { resolve, relative } from 'path'
 
 export interface SqlsmithPluginOptions {
   input: string
   output: string
-  dialect?: 'postgresql' | 'mysql' | 'sqlite' | 'bigquery'
+  dialect?: SqlDialect
   watch?: boolean
   includeComments?: boolean
   includeHeader?: boolean
