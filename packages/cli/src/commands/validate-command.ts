@@ -1,38 +1,33 @@
 import { resolve } from 'node:path';
-import type { LogLevel } from '@sqlsmith/core';
-import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
+import {
+	Logger,
+	type LogLevel,
+	renderDiagnostics,
+	renderValidationSummary,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 
 export type ValidateCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
+	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
-/**
- * Validate command implementation - check syntax and dependencies
- */
 export const executeValidateCommand = async (
 	inputPath: string,
 	options: ValidateCommandOptions,
 ): Promise<void> => {
-	const container = new ServiceContainer({
-		loggerOptions: {
-			logLevel: options.logLevel,
-		},
+	const logger = new Logger({ logLevel: options.logLevel });
+	const merger = new SqlMerger({
+		logger,
+		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
+	logger.header('✅ SQL Validator');
 
-	const logger = container.getLogger();
-
-	// Resolve input path (already validated by CLI layer)
-	const resolvedInput = resolve(inputPath);
-
-	// Create merger with container
-	const merger = SqlMerger.withContainer(container);
-
-	try {
-		await merger.validateFiles(resolvedInput, options.dialect);
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error(`Validation failed: ${errorMessage}`);
-		throw error;
-	}
+	const plan = merger.planDirectory(resolve(inputPath), options.dialect);
+	renderDiagnostics(logger, plan);
+	renderValidationSummary(logger, plan);
 };

@@ -1,0 +1,5 @@
+{
+	"errorType": "MISSING_DEPENDENCY",
+	"exitCode": 3,
+	"messagePattern": "'`orders`' depends on '`customers`' which was not found"
+}

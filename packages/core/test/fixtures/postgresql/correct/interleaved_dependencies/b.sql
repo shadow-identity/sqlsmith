@@ -1,0 +1,5 @@
+CREATE TABLE y (
+    id SERIAL PRIMARY KEY,
+    x_id INTEGER,
+    FOREIGN KEY (x_id) REFERENCES x(id)
+);

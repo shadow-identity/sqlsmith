@@ -5,13 +5,13 @@ A sophisticated tool for merging SQL files with automatic dependency resolution 
 ## Features
 
 🔍 **Smart Table Dependency Detection** - Automatically analyzes FOREIGN KEY constraints in CREATE TABLE statements to understand table-to-table dependencies  
-🔄 **Topological Sorting** - Uses Kahn's algorithm to determine safe execution order  
+🔄 **Statement-Level Topological Sorting** - Uses Kahn's algorithm to order individual statements safely, even when dependencies interleave across files  
 🛡️ **Circular Dependency Detection** - Prevents invalid schemas with clear error messages  
 🚫 **Duplicate Table Validation** - Detects duplicate table names across multiple files  
 📋 **Statement Order Validation** - Ensures CREATE TABLE statements within files follow dependency order  
 📁 **File & Stdout Output** - Flexible output options for CI/CD and manual workflows  
 🎛️ **Configurable Options** - Control comments, headers, formatting, and validation behavior  
-🗃️ **Multi-Dialect Support** - PostgreSQL, MySQL, SQLite, and BigQuery  
+🗃️ **Verified Multi-Dialect Support** - PostgreSQL, SQLite, and MySQL
 ⚡ **Fast & Reliable** - Built with TypeScript and comprehensive test coverage  
 
 ### **Scope & Focus**
@@ -22,8 +22,13 @@ SQLsmith is specifically designed for **SQL DDL statements** and focuses on:
 - ✅ **Composite foreign keys** and complex table structures
 - ✅ **Self-referencing tables** (hierarchical structures)
 - ✅ **Sequences** (CREATE SEQUENCE statements that tables depend on)
-- ✅ **Views** (CREATE VIEW statements that depend on tables/other views)
+- ✅ **Views** (recursive JOIN/subquery/CTE/set-operation dependencies across tables and views)
 - ✅ **Mixed scenarios** combining tables, sequences, and views
+
+**Passed through verbatim (not analyzed for dependencies):** statements no
+processor recognizes — e.g. `CREATE INDEX`, `ALTER TABLE`, `INSERT`,
+`COMMENT ON` — are kept in the output next to the recognized statement they
+follow in their source file.
 
 **Not currently supported:**
 - ❌ User-defined types (ENUM, DOMAIN, composite types)
@@ -107,14 +112,12 @@ sqlsmith <input-directory> [options]
 - `<input-directory>` - Directory containing SQL files to merge
 
 **Options:**
-- `-o, --output <path>` - Output file path (default: stdout)
-- `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery (default: postgresql)
-- `--no-comments` - Disable file comments in output
-- `--no-header` - Disable header comment in output  
-- `--no-separate` - Disable statement separation
-- `--allow-reorder-drop-comments` - Allow statement reordering within files (bypasses intra-file validation)
-- `--quiet` - Reduce console output
-- `--verbose` - Increase console output for debugging
+- `-o, --output <path>` - Output file path (default: stdout; stdout carries only the merged SQL, all logs go to stderr)
+- `-d, --dialect <dialect>` - SQL dialect: postgresql, sqlite, mysql (default: postgresql)
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
+- `--no-validate-source-order` - Skip validation that statements within a file are declared before their dependents
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Examples:**
 ```bash
@@ -124,14 +127,14 @@ sqlsmith ./schemas
 # Merge with file output
 sqlsmith ./schemas --output combined.sql
 
-# MySQL dialect with minimal output
-sqlsmith ./schemas --dialect mysql --no-comments --no-header
+# MySQL dialect
+sqlsmith ./schemas --dialect mysql
 
 # Quiet mode for CI/CD
-sqlsmith ./schemas --quiet --output production.sql
+sqlsmith ./schemas --log-level error --output production.sql
 
-# Allow statement reordering for files with mixed dependencies
-sqlsmith ./legacy-schemas --allow-reorder-drop-comments --output fixed.sql
+# Reorder statements from files with mixed declaration order
+sqlsmith ./legacy-schemas --no-validate-source-order --output fixed.sql
 ```
 
 ### Info Command
@@ -143,8 +146,10 @@ sqlsmith info <input-directory> [options]
 ```
 
 **Options:**
-- `-d, --dialect <dialect>` - SQL dialect (default: postgresql)  
-- `--quiet` - Reduce console output
+- `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -174,7 +179,9 @@ sqlsmith validate <input-directory> [options]
 
 **Options:**
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
-- `--quiet` - Reduce console output
+- `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -203,21 +210,28 @@ You can also use SQLsmith programmatically in your Node.js applications:
 ```typescript
 import { SqlMerger } from 'sqlsmith';
 
-const merger = new SqlMerger();
+const merger = new SqlMerger({ defaultSchema: 'public' });
 
-// Parse SQL files from directory
-const sqlFiles = merger.parseSqlFiles('./schemas', 'postgresql');
+// Parse, validate, build one graph, and compute one stable order
+const plan = merger.planDirectory('./schemas', 'postgresql');
 
-// Merge files with options
-const merged = merger.mergeFiles(sqlFiles, {
+// Pure emission: merge never repeats analysis
+const merged = merger.merge(plan, {
   addComments: true,
   includeHeader: true,
-  separateStatements: true,
-  outputPath: 'merged.sql' // Optional: write to file
+  separateStatements: true
 });
 
 console.log(merged); // Merged SQL content
+
+// The same value powers custom info/validation UIs
+console.log(plan.files, plan.graph, plan.orderedStatements, plan.diagnostics);
 ```
+
+PostgreSQL identifier matching is schema-aware: unquoted names fold to
+lowercase, quoted names preserve exact case, and unqualified relations use
+`defaultSchema`. `SET search_path` remains in the emitted SQL but is not
+interpreted during planning.
 
 ## Examples
 
@@ -305,10 +319,10 @@ CREATE TABLE comments (
 
 ```bash
 # In your build pipeline
-sqlsmith ./database/schemas --quiet --output deploy/schema.sql
+sqlsmith ./database/schemas --log-level error --output deploy/schema.sql
 
 # Validate before deployment
-sqlsmith validate ./database/schemas --quiet
+sqlsmith validate ./database/schemas --log-level error
 if [ $? -eq 0 ]; then
     echo "✅ Schema validation passed"
     psql -f deploy/schema.sql
@@ -322,7 +336,7 @@ fi
 
 ```bash
 # Direct execution
-sqlsmith ./schemas --quiet --no-header --no-comments | psql mydb
+sqlsmith ./schemas | psql mydb  # logs go to stderr, stdout is pure SQL
 
 # Or save and execute
 sqlsmith ./schemas --output schema.sql
@@ -343,7 +357,14 @@ SQL Merger performs several validation checks to ensure schema integrity:
 **Statement Order Validation:**
 - Ensures CREATE TABLE statements within individual files follow dependency order
 - Catches incorrect ordering that could cause execution failures
-- Can be bypassed with `--allow-reorder-drop-comments` for legacy schemas
+- Can be skipped with `--no-validate-source-order`; statements are then reordered
+  safely at merge time, comments travel with their statements
+
+**Missing Dependency Detection:**
+- A FOREIGN KEY referencing a table that is not defined in the input files is an
+  error (exit code 3)
+- Use `--allow-external-references` when the referenced tables exist outside the
+  merged file set
 
 **Circular Dependency Detection:**
 - Uses DFS algorithm to detect impossible dependency chains
@@ -371,13 +392,36 @@ This is **not** considered a circular dependency since it's a valid hierarchical
 For legacy schemas with mixed statement ordering:
 
 ```bash
-# Bypass intra-file validation for problematic files
-sqlsmith ./legacy-schemas --allow-reorder-drop-comments
+# Skip intra-file declaration-order validation; the merge reorders statements safely
+sqlsmith ./legacy-schemas --no-validate-source-order
 
-# Note: This may drop comments during reordering
+# Comments are preserved: each comment travels with the statement below it
 ```
 
 ## Error Handling
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | SQL syntax, processing, internal, or unexpected errors |
+| 2 | Input/output filesystem errors (missing paths, unreadable input, unwritable output) |
+| 3 | Dependency and declaration-order errors |
+| 4 | Configuration errors (invalid options or unsupported dialect) |
+
+Library errors are typed (`FileSystemError`, `ParsingError`,
+`DependencyError`, `ProcessingError`, or `ConfigurationError`) and retain
+their error code, file/line context, and original cause. The core library does
+not print exceptions; the CLI logs each failure exactly once at its outer
+boundary and then exits with the code above.
+
+### Missing Dependencies
+```bash
+$ sqlsmith ./schemas
+❌ Error: Statement 'orders' depends on 'customers' which was not found
+# exits with code 3; use --allow-external-references if intentional
+```
 
 ### Circular Dependencies
 ```bash
@@ -417,10 +461,20 @@ $ sqlsmith ./nonexistent
 
 ## Supported SQL Dialects
 
-- **PostgreSQL** (default) - Full FOREIGN KEY constraint support
-- **MySQL** - Supports FOREIGN KEY and REFERENCES syntax  
-- **SQLite** - Basic FOREIGN KEY support
-- **BigQuery** - Limited constraint support
+Only dialects backed by parse, dependency-order, invalid-case, and golden
+fixtures are advertised. `SUPPORTED_DIALECTS` and `DIALECT_CAPABILITIES` from
+`@sqlsmith/core` are the authoritative runtime registry.
+
+<!-- dialect-capabilities:start -->
+| Dialect | Identifier quotes | Case folding used for graph identity | Default namespace | CREATE TABLE | Foreign keys | Views | Sequences |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `postgresql` | `"name"` | Unquoted → lowercase; quoted preserved | `public` | Yes | Yes | Yes | `CREATE SEQUENCE` |
+| `sqlite` | `"name"`, `` `name` `` | Case-insensitive | `main` | Yes | Yes | Yes | None |
+| `mysql` | `` `name` `` | Preserved by SQLsmith; server behavior is configuration-dependent | Current database (implicit) | Yes | Yes | Yes | None |
+<!-- dialect-capabilities:end -->
+
+BigQuery is intentionally not public: the current parser/model contract does
+not cover BigQuery foreign keys or three-part `project.dataset.table` identity.
 
 ## Configuration Options
 
@@ -428,23 +482,34 @@ $ sqlsmith ./nonexistent
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `addComments` | `true` | Include file and dependency comments |
-| `includeHeader` | `true` | Include generation timestamp and file list |
-| `separateStatements` | `true` | Add blank lines between files |
-| `outputPath` | `undefined` | File path for output (default: stdout) |
+| `addComments` | `true` | Include per-statement source and dependency comments |
+| `includeHeader` | `true` | Include generation timestamp and statement order |
+| `separateStatements` | `true` | Add blank lines between statements |
 
-### Output Formats
+`merge(plan)` returns the merged SQL as a string; writing it to a file or
+stdout is the caller's responsibility (the CLI handles this via `--output`).
 
-**Full Output (default):**
-- Header with timestamp and file order
-- File comments with dependencies  
+### Programmatic API migration
+
+The container-centric API has been removed. Construct `SqlMerger` directly
+with options and optional narrow dependencies, then use
+`planDirectory`/`planFiles` followed by `merge(plan)`. Removed APIs:
+`ServiceContainer`, `ServiceConfiguration`, `withContainer`, `getContainer`,
+`parseSqlFiles`, `mergeFiles`, `analyzeDependencies`, and `validateFiles`.
+Presentation belongs to the caller; core exposes structured `MergePlan`
+diagnostics and does not print progress, graphs, or exceptions.
+
+### Output Format
+
+The merged SQL always includes:
+- Header with timestamp and statement order
+- Per-statement source and dependency comments
 - Original formatting preserved
 - Statement separation
 
-**Minimal Output (`--no-header --no-comments --no-separate`):**
-- Just the SQL statements
-- Perfect for direct database execution
-- Minimal file size
+Programmatic users can turn these off through `MergeOptions`
+(`addComments`, `includeHeader`, `separateStatements`); the CLI always
+emits the full format.
 
 ## Development
 

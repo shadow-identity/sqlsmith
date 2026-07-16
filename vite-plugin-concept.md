@@ -69,14 +69,14 @@ export default defineConfig({
 ```typescript
 // src/plugin.ts
 import type { Plugin } from 'vite'
-import { SqlMerger } from 'sqlsmith'
+import { SqlMerger, type SqlDialect } from 'sqlsmith'
 import { watch } from 'chokidar'
 import { resolve, relative } from 'path'
 
 export interface SqlsmithPluginOptions {
   input: string
   output: string
-  dialect?: 'postgresql' | 'mysql' | 'sqlite' | 'bigquery'
+  dialect?: SqlDialect
   watch?: boolean
   includeComments?: boolean
   includeHeader?: boolean
@@ -119,14 +119,16 @@ export function sqlsmith(options: SqlsmithPluginOptions): Plugin {
   
   async function generateSchema() {
     try {
-      const sqlFiles = merger.findSqlFiles(options.input)
-      const parsed = sqlFiles.map(file => merger.parseSqlFiles(file, options.dialect))
-      
-      const merged = merger.mergeFiles(parsed, {
-        addComments: options.includeComments ?? true,
-        includeHeader: options.includeHeader ?? true,
-        outputPath: options.output
+      const plan = merger.planDirectory(options.input, options.dialect, {
+        recursive: true
       })
+
+      const merged = merger.merge(plan, {
+        addComments: options.includeComments ?? true,
+        includeHeader: options.includeHeader ?? true
+      })
+
+      writeFileSync(options.output, merged)
       
       options.onSuccess?.(options.output)
       
@@ -258,4 +260,4 @@ export default defineConfig(({ mode }) => ({
 3. **HMR Integration** - Triggers reloads when schema changes
 4. **Error Handling** - Beautiful error display in Vite dev server
 5. **Build Integration** - Validates schema as part of build process
-6. **TypeScript Support** - Full type safety and IntelliSense 
+6. **TypeScript Support** - Full type safety and IntelliSense

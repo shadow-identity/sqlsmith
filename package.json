@@ -1,11 +1,13 @@
 {
 	"name": "sqlsmith-workspace",
-	"version": "0.4.3",
+	"version": "0.5.0",
 	"description": "SQLsmith monorepo - SQL schema merging tools",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"build": "pnpm -r build",
+		"check:refactoring-plan": "node scripts/check-refactoring-plan.mjs",
+		"check:refactoring-plan:complete": "node scripts/check-refactoring-plan.mjs --require-executable",
 		"test": "pnpm build && pnpm -r test",
 		"clean": "pnpm -r exec rm -rf dist",
 		"dev:cli": "pnpm --filter @sqlsmith/cli dev",
@@ -35,17 +37,12 @@
 		"url": "git+https://github.com/shadow-identity/sqlsmith.git"
 	},
 	"engines": {
-		"node": ">=20.0.0"
+		"node": ">=24.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.0",
 		"@types/node": "^24.0.0",
 		"typescript": "^5.8.3"
 	},
-	"pnpm": {
-		"overrides": {
-			"postcss@<8.5.10": "8.5.15"
-		}
-	},
-	"packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912"
+	"packageManager": "pnpm@11.13.1+sha512.b2fc7683b8a6525414e7d13e1ba28caaddde96bf66ec540bfaeb7e702b81f3e0be4d1f295edf7f9fe0396740a8dce4509c582ddf79891f4543fea32d37645f25"
 }

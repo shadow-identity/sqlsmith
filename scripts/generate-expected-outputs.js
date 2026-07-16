@@ -26,8 +26,8 @@ dialects.forEach((dialect) => {
 			console.log(`  ✅ ${scenario}`);
 
 			const scenarioPath = resolve(dialectPath, scenario);
-			const sqlFiles = merger.parseSqlFiles(scenarioPath, dialect);
-			const mergedOutput = merger.mergeFiles(sqlFiles, {
+			const plan = merger.planDirectory(scenarioPath, dialect);
+			const mergedOutput = merger.merge(plan, {
 				addComments: false,
 				includeHeader: false,
 			});

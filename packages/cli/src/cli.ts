@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { ErrorHandler, Logger } from '@sqlsmith/core';
+import { SUPPORTED_DIALECTS } from '@sqlsmith/core';
 import { Command, Option } from 'commander';
 import {
 	executeInfoCommand,
@@ -18,6 +18,7 @@ import {
 } from './utils.js';
 
 const VERSION = getVersion();
+const DIALECT_HELP = `SQL dialect (${SUPPORTED_DIALECTS.join(', ')})`;
 
 /**
  * Create and configure the CLI program
@@ -35,18 +36,22 @@ export const createProgram = (): Command => {
 	program
 		.argument('<input>', 'Input directory containing SQL files')
 		.option('-o, --output <path>', 'Output file path (default: stdout)')
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
+			'--no-validate-source-order',
+			'Skip validation that statements within a file are declared before their dependents',
 		)
 		.option(
-			'--allow-reorder-drop-comments',
-			'Allow reordering statements within files (drops comments)',
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
+		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: MergeCommandOptions) => {
@@ -71,14 +76,18 @@ export const createProgram = (): Command => {
 		.command('info')
 		.description('Analyze SQL file dependencies without merging')
 		.argument('<input>', 'Input directory containing SQL files')
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
+		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: InfoCommandOptions) => {
@@ -96,14 +105,18 @@ export const createProgram = (): Command => {
 		.command('validate')
 		.description('Validate SQL files and check for circular dependencies')
 		.argument('<input>', 'Input directory containing SQL files')
+		.option('-d, --dialect <dialect>', DIALECT_HELP, 'postgresql')
 		.option(
-			'-d, --dialect <dialect>',
-			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
-			'postgresql',
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
+		)
+		.option(
+			'--default-schema <schema>',
+			'Schema assigned to unqualified relation names (PostgreSQL default: public)',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
-				.choices(['error', 'warn', 'info', 'debug'])
+				.choices(['silent', 'error', 'warn', 'info', 'debug'])
 				.default('info'),
 		)
 		.action(async (input: string, options: ValidateCommandOptions) => {
@@ -130,8 +143,6 @@ export const main = async (): Promise<void> => {
 // If this module is run directly, execute the CLI
 if (import.meta.url === `file://${process.argv[1]}`) {
 	main().catch((error) => {
-		const logger = new Logger({ logLevel: 'info' });
-		const errorHandler = new ErrorHandler(logger);
-		errorHandler.handleCommandError(error);
+		handleCommandError(error, 'info');
 	});
 }

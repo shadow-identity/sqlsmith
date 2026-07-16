@@ -1,6 +1,17 @@
-import type { AST, Create as CreateView, Select } from 'node-sql-parser';
+import type { AST, Create as CreateView } from 'node-sql-parser';
+import { getDialectAstAdapter } from '../services/dialect-ast-adapter.js';
+import { collectSelectRelations } from '../services/select-relation-collector.js';
+import {
+	createDialectRules,
+	createRelationIdentifier,
+	type DialectRules,
+	unquotedRelationName,
+} from '../types/relation-identifier.js';
 import type { Dependency, SqlStatement } from '../types/sql-statement.js';
-import type { StatementProcessor } from './base-processor.js';
+import type {
+	StatementProcessor,
+	StatementProcessorContext,
+} from './base-processor.js';
 
 export class CreateViewProcessor implements StatementProcessor {
 	getHandledTypes(): string[] {
@@ -14,21 +25,44 @@ export class CreateViewProcessor implements StatementProcessor {
 	/**
 	 * Extracts view statements from the given AST.
 	 */
-	extractStatements(ast: AST | AST[], filePath: string): SqlStatement[] {
+	extractStatements(
+		ast: AST | AST[],
+		filePath: string,
+		context?: StatementProcessorContext,
+	): SqlStatement[] {
 		const statements: SqlStatement[] = [];
 		const astArray = Array.isArray(ast) ? ast : [ast];
+		const rules = context?.identifierRules ?? createDialectRules('postgresql');
+		const adapter =
+			context?.dialectAdapter ??
+			getDialectAstAdapter(context?.dialect ?? 'postgresql');
 
 		for (const statement of astArray) {
 			if (this.canProcess(statement)) {
-				const viewName = this.#extractViewName(statement);
+				const source =
+					context?.relationNames.find(
+						(relation) =>
+							relation.role === 'declaration' &&
+							relation.statementType === 'view',
+					) ??
+					(() => {
+						const declaration = adapter.declaration(statement, 'view');
+						return declaration
+							? unquotedRelationName(declaration.name, declaration.schema)
+							: undefined;
+					})();
 
-				if (viewName) {
+				if (source) {
 					const dependencies = this.#extractViewDependencies(
 						statement as CreateView,
+						context,
+						rules,
 					);
+					const identifier = createRelationIdentifier(source, rules);
 					statements.push({
 						type: 'view',
-						name: viewName,
+						identifier,
+						name: identifier.display,
 						dependsOn: dependencies,
 						filePath,
 						content: '', // Will be filled by the file parser
@@ -41,62 +75,34 @@ export class CreateViewProcessor implements StatementProcessor {
 		return statements;
 	}
 
-	#extractViewDependencies(statement: CreateView): Dependency[] {
-		const dependencies: Dependency[] = [];
+	#extractViewDependencies(
+		statement: CreateView,
+		context: StatementProcessorContext | undefined,
+		rules: DialectRules,
+	): Dependency[] {
+		const adapter =
+			context?.dialectAdapter ??
+			getDialectAstAdapter(context?.dialect ?? 'postgresql');
+		const definition = adapter.viewDefinition(statement);
+		if (!definition) return [];
 
-		const definition = this.#extractViewDefinition(statement);
-		if (definition) {
-			const selectStatement = definition as Select;
-			const tables = this.#extractTableReferencesFromSelect(selectStatement);
+		const sourceRelations =
+			context?.relationNames.filter(
+				(relation) =>
+					relation.role === 'reference' &&
+					relation.referenceKind !== 'references',
+			) ?? [];
+		const collection = collectSelectRelations(definition, {
+			identifierRules: rules,
+			dialectAdapter: adapter,
+			sourceRelations,
+			sourceCteAliases: context?.cteAliases,
+		});
 
-			for (const table of tables) {
-				dependencies.push({
-					name: table,
-					type: 'table',
-				});
-			}
-		}
-
-		return dependencies;
-	}
-
-	#isCreateNode = (node: AST): boolean => {
-		return (
-			typeof node === 'object' &&
-			node !== null &&
-			'type' in node &&
-			(node as { type?: unknown }).type === 'create'
-		);
-	};
-
-	#extractViewName = (node: AST): string | undefined => {
-		if (!this.#isCreateNode(node)) return undefined;
-		// Some parsers store view name at node.view, others under table[0].table
-		const asRecord = node as unknown as Record<string, unknown>;
-		const direct =
-			typeof asRecord.view === 'string' ? (asRecord.view as string) : undefined;
-		if (direct) return direct;
-		const tableArr = asRecord.table as Array<{ table?: string }> | undefined;
-		return tableArr?.at(0)?.table;
-	};
-
-	#extractViewDefinition = (node: AST): unknown => {
-		if (!this.#isCreateNode(node)) return undefined;
-		const asRecord = node as unknown as Record<string, unknown>;
-		return asRecord.definition;
-	};
-
-	#extractTableReferencesFromSelect(selectStatement: Select): string[] {
-		const tables: string[] = [];
-
-		if (selectStatement.from && Array.isArray(selectStatement.from)) {
-			for (const from of selectStatement.from) {
-				if ('table' in from && from.table) {
-					tables.push(from.table);
-				}
-			}
-		}
-
-		return tables;
+		return [...collection.relations.values()].map((identifier) => ({
+			identifier,
+			name: identifier.display,
+			type: 'table',
+		}));
 	}
 }

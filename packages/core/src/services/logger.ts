@@ -1,9 +1,15 @@
-export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+import { format } from 'node:util';
+
+export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
 
 export type LoggerOptions = {
 	logLevel?: LogLevel;
 };
 
+/**
+ * All log output goes to stderr: stdout is reserved for program output
+ * (merged SQL), so piping the CLI produces a clean SQL file.
+ */
 export class Logger {
 	#logLevel: LogLevel;
 
@@ -12,6 +18,7 @@ export class Logger {
 	}
 
 	#shouldLog = (messageLevel: LogLevel): boolean => {
+		if (this.#logLevel === 'silent') return false;
 		const levels: LogLevel[] = ['error', 'warn', 'info', 'debug'];
 		const currentLevelIndex = levels.indexOf(this.#logLevel);
 		const messageLevelIndex = levels.indexOf(messageLevel);
@@ -19,11 +26,22 @@ export class Logger {
 	};
 
 	/**
+	 * Report whether messages of the given level would be emitted.
+	 * `silent` is never enabled: it is an off switch, not a message level.
+	 */
+	isLevelEnabled = (level: LogLevel): boolean =>
+		level !== 'silent' && this.#shouldLog(level);
+
+	#write = (message: string, ...args: unknown[]): void => {
+		process.stderr.write(`${format(message, ...args)}\n`);
+	};
+
+	/**
 	 * Log an error message
 	 */
 	error = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('error')) {
-			console.error(`❌ ${message}`, ...args);
+			this.#write(`❌ ${message}`, ...args);
 		}
 	};
 
@@ -32,7 +50,7 @@ export class Logger {
 	 */
 	warn = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('warn')) {
-			console.warn(`⚠️  ${message}`, ...args);
+			this.#write(`⚠️  ${message}`, ...args);
 		}
 	};
 
@@ -41,7 +59,7 @@ export class Logger {
 	 */
 	info = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(message, ...args);
+			this.#write(message, ...args);
 		}
 	};
 
@@ -50,7 +68,7 @@ export class Logger {
 	 */
 	debug = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('debug')) {
-			console.debug(`🐛 ${message}`, ...args);
+			this.#write(`🐛 ${message}`, ...args);
 		}
 	};
 
@@ -59,7 +77,7 @@ export class Logger {
 	 */
 	success = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(`✅ ${message}`, ...args);
+			this.#write(`✅ ${message}`, ...args);
 		}
 	};
 
@@ -68,8 +86,8 @@ export class Logger {
 	 */
 	header = (title: string, separator = '='): void => {
 		if (this.#shouldLog('info')) {
-			console.info(`\n${title}`);
-			console.info(separator.repeat(Math.max(50, title.length)));
+			this.#write(`\n${title}`);
+			this.#write(separator.repeat(Math.max(50, title.length)));
 		}
 	};
 
@@ -78,7 +96,7 @@ export class Logger {
 	 */
 	raw = (message: string, ...args: unknown[]): void => {
 		if (this.#shouldLog('info')) {
-			console.info(message, ...args);
+			this.#write(message, ...args);
 		}
 	};
 }

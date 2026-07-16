@@ -25,7 +25,8 @@ export default defineConfig({
     sqlsmith({
       input: './src/schemas',
       output: './src/schema.sql',
-      dialect: 'postgresql'
+      dialect: 'postgresql',
+      logLevel: 'info'
     })
   ]
 })
@@ -80,6 +81,6 @@ CREATE TABLE posts (
 ## Development Workflow
 
 1. **Start dev server**: `npm run dev`
-2. **Edit SQL files**: Changes to `src/schemas/*.sql` trigger automatic regeneration
+2. **Edit SQL files**: Nested create/update/delete events under `src/schemas` trigger automatic regeneration
 3. **Use generated schema**: Import or reference `src/schema.sql` in your app
-4. **Build for production**: `npm run build` validates schema during build 
+4. **Build for production**: `npm run build` validates schema during build

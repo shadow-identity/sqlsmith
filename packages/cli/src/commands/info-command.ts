@@ -1,30 +1,35 @@
 import { resolve } from 'node:path';
-import type { LogLevel } from '@sqlsmith/core';
-import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
+import {
+	Logger,
+	type LogLevel,
+	renderDependencyGraph,
+	renderDiagnostics,
+	renderRecommendedOrder,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 
 export type InfoCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
+	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
-/**
- * Info command implementation - analyze dependencies
- */
 export const executeInfoCommand = async (
 	inputPath: string,
 	options: InfoCommandOptions,
 ): Promise<void> => {
-	const container = new ServiceContainer({
-		loggerOptions: {
-			logLevel: options.logLevel,
-		},
+	const logger = new Logger({ logLevel: options.logLevel });
+	const merger = new SqlMerger({
+		logger,
+		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
+	logger.header('🔍 SQL Dependency Analyzer');
 
-	// Resolve input path (already validated by CLI layer)
-	const resolvedInput = resolve(inputPath);
-
-	// Create merger with container
-	const merger = SqlMerger.withContainer(container);
-
-	merger.analyzeDependencies(resolvedInput, options.dialect as SqlDialect);
+	const plan = merger.planDirectory(resolve(inputPath), options.dialect);
+	renderDiagnostics(logger, plan);
+	renderDependencyGraph(logger, plan);
+	renderRecommendedOrder(logger, plan);
 };

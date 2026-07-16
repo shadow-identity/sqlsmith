@@ -1,44 +1,57 @@
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LogLevel } from '@sqlsmith/core';
-import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
+import {
+	FileSystemError,
+	Logger,
+	renderDiagnostics,
+	type SqlDialect,
+	SqlMerger,
+} from '@sqlsmith/core';
 
 export type MergeCommandOptions = {
 	output?: string;
 	dialect: SqlDialect;
 	logLevel: LogLevel;
-	allowReorderDropComments?: boolean;
+	validateSourceOrder?: boolean;
+	allowExternalReferences?: boolean;
+	defaultSchema?: string;
 };
 
-/**
- * Merge command implementation
- */
 export const executeMergeCommand = async (
 	inputPath: string,
 	options: MergeCommandOptions,
 ): Promise<void> => {
-	const container = new ServiceContainer({
-		loggerOptions: {
-			logLevel: options.logLevel,
-		},
-		allowReorderDropComments: options.allowReorderDropComments ?? false,
+	const logger = new Logger({ logLevel: options.logLevel });
+	const merger = new SqlMerger({
+		logger,
+		validateSourceOrder: options.validateSourceOrder ?? true,
+		allowExternalReferences: options.allowExternalReferences ?? false,
+		defaultSchema: options.defaultSchema,
 	});
+	logger.info('🔧 SQL Merger');
 
-	const logger = container.getLogger();
-
-	logger.info(`🔧 SQL Merger`);
-
-	const resolvedInput = resolve(inputPath);
-
-	const merger = SqlMerger.withContainer(container);
-
-	const sqlFiles = merger.parseSqlFiles(resolvedInput, options.dialect);
-
-	merger.mergeFiles(sqlFiles, {
+	const plan = merger.planDirectory(resolve(inputPath), options.dialect);
+	renderDiagnostics(logger, plan);
+	const merged = merger.merge(plan, {
 		addComments: true,
 		includeHeader: true,
 		separateStatements: true,
-		outputPath: options.output,
 	});
+
+	if (options.output) {
+		try {
+			writeFileSync(options.output, merged, 'utf-8');
+			logger.info(`💾 Output written to: ${options.output}`);
+		} catch (error) {
+			throw FileSystemError.fileWriteFailed(
+				options.output,
+				error instanceof Error ? error : new Error(String(error)),
+			);
+		}
+	} else {
+		process.stdout.write(merged.endsWith('\n') ? merged : `${merged}\n`);
+	}
 
 	logger.success('Merge completed successfully');
 };

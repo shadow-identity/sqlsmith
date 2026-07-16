@@ -1,6 +1,6 @@
 {
 	"name": "@sqlsmith/cli",
-	"version": "0.4.3",
+	"version": "0.5.0",
 	"description": "CLI for SQLsmith - SQL schema merging with dependency resolution",
 	"main": "./dist/cli.js",
 	"types": "./dist/cli.d.ts",
@@ -40,7 +40,7 @@
 		"directory": "packages/cli"
 	},
 	"engines": {
-		"node": ">=20.0.0"
+		"node": ">=24.0.0"
 	},
 	"dependencies": {
 		"@sqlsmith/core": "workspace:*",

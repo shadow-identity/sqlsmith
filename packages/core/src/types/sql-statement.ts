@@ -1,25 +1,36 @@
 import type { AST } from 'node-sql-parser';
+import type { RelationIdentifier } from './relation-identifier.js';
+
+export type { SqlDialect } from './dialect.js';
 
 export type StatementType =
 	| 'table'
 	| 'view'
 	| 'sequence'
 	| 'index'
-	| 'function';
-
-export type SqlDialect = 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
+	| 'function'
+	/** A statement no processor recognizes; carried through the merge verbatim. */
+	| 'raw';
 
 export interface Dependency {
-	name: string;
-	type: StatementType;
+	/** Canonical relation identity used for matching and graph operations. */
+	readonly identifier: RelationIdentifier;
+	/** @deprecated Use `identifier.display`; retained as a display-only alias. */
+	readonly name: string;
+	readonly type: StatementType;
 }
 
 export interface SqlStatement {
 	type: StatementType;
-	name: string;
+	/** Present for every recognized relation statement; absent for raw SQL. */
+	readonly identifier?: RelationIdentifier;
+	/** @deprecated Use `identifier.display`; raw statements retain a synthetic name. */
+	readonly name: string;
 	dependsOn: Dependency[];
 	filePath: string;
 	content: string;
+	/** 0-based position of the statement within its source file. */
+	orderInFile?: number;
 	lineNumber?: number;
 	ast?: AST;
 }
@@ -29,9 +40,4 @@ export interface SqlFile {
 	content: string;
 	statements: SqlStatement[];
 	ast?: AST | AST[];
-}
-
-export interface ParseResult {
-	ast: AST | AST[];
-	statements: SqlStatement[];
 }

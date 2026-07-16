@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -)",
+      "Bash(pnpm -r --no-bail test)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Bash(python3 *)"
+    ]
+  }
+}
