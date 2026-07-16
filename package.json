@@ -37,7 +37,7 @@
 		"url": "git+https://github.com/shadow-identity/sqlsmith.git"
 	},
 	"engines": {
-		"node": ">=20.0.0"
+		"node": ">=24.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.0",

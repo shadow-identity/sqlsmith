@@ -13,6 +13,11 @@ coordinated release of `@sqlsmith/core`, `@sqlsmith/cli` and
 
 ### Breaking changes
 
+#### Runtime
+
+- Node.js >= 24 is now required by all packages. Node 20 reached end of life
+  in April 2026, and the workspace toolchain (pnpm 11) requires Node >= 22.13.
+
 #### Core API
 
 - The merge pipeline now uses one reusable `MergePlan`:
