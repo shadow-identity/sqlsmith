@@ -44,6 +44,27 @@ export default defineConfig({
 reporting remain active. The former `normal`/`verbose` aliases were removed in
 favor of the shared core levels.
 
+## Debug output and warning deduplication
+
+At `logLevel: 'debug'` every generation additionally reports the discovered
+SQL files, the dependency graph and the recommended execution order — the
+same renderers the CLI `info` command uses.
+
+At `warn` and `info`, diagnostics (external references, raw passthrough
+statements) are deduplicated across watch rebuilds:
+
+- the first build prints every diagnostic in full;
+- subsequent rebuilds print only new or changed diagnostics and collapse the
+  rest into a single line: `SQLsmith: N known warning(s) — set logLevel:
+  'debug' to see all`;
+- a diagnostic that disappears and later returns is printed in full again;
+- a failed rebuild keeps the known set of the last successful generation,
+  matching the preserved last-good output;
+- `debug` disables deduplication and always prints everything.
+
+The known set lives in plugin memory, so restarting the dev server prints all
+diagnostics in full again.
+
 Runtime `SET search_path` statements are preserved but are not interpreted by
 dependency analysis; configure `defaultSchema` to match the effective schema.
 

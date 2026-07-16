@@ -72,6 +72,14 @@ the next release is prepared.
 - Public `SUPPORTED_DIALECTS` and `DIALECT_CAPABILITIES` registries describing
   identifier quoting, case handling, default namespaces, tables, foreign keys,
   views and sequence support.
+- The CLI accepts `--log-level silent`: logs are fully suppressed while merged
+  SQL still goes to stdout and exit codes are preserved.
+- Vite plugin `logLevel: 'debug'` renders the discovered SQL files, the
+  dependency graph and the recommended execution order on every generation.
+- Merge-plan renderers (`renderDiagnostics`, `renderDependencyGraph`,
+  `renderRecommendedOrder`, `renderValidationSummary`, `renderDiscoveredFiles`)
+  and `Logger.isLevelEnabled` are exported from `@sqlsmith/core`; the CLI and
+  the Vite plugin share one presentation implementation.
 - Structured `MergePlan` diagnostics and typed error context including paths,
   statement lines, dependency keys and original causes.
 - Vite 6 support in addition to Vite 4 and 5.
@@ -100,6 +108,10 @@ the next release is prepared.
   while production build failures are propagated.
 - Vite `silent` mode suppresses SQLsmith logs but still generates output and
   reports failures through Vite.
+- Vite watch rebuilds print only new or changed diagnostics; known ones
+  collapse into a single `SQLsmith: N known warning(s)` line. The first build
+  prints everything, a failed rebuild keeps the last successful set, and
+  `debug` disables the deduplication.
 
 ### Fixed
 

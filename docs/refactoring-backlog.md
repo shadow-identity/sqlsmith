@@ -425,6 +425,26 @@ dev server нужен только для одного HMR smoke; если он 
   меняет output.
 - Коммит: `fix(vite-plugin)!: align discovery logging and watch lifecycle`.
 
+### Дополнение 2026-07 — качество вывода (Asana 1216515168376999)
+
+**Статус: completed.** Продолжение этапа 5 по итогам жалобы на шумность
+вывода в production-сборках MobilityXplorer.
+
+- **R5-08 (P1):** watch-пересборки печатают только новые/изменившиеся
+  диагностики; известные сворачиваются в одну строку-счётчик
+  `SQLsmith: N known warning(s)`. Known-set замещается только успешным
+  планом: неудачная пересборка не теряет и не переспамливает warnings,
+  исчезнувшая и вернувшаяся диагностика печатается полностью снова;
+  `debug` отключает свёртку. Trace: C5-DEDUP.
+- **R5-09 (P1):** `logLevel: 'debug'` у plugin рендерит найденные файлы,
+  dependency graph и recommended order общими core-рендерерами
+  (`plan-renderers` переехали из CLI в core, plugin и CLI делят одну
+  реализацию; добавлен `Logger.isLevelEnabled`). Trace: C5-DEBUG.
+- **R5-10 (P2):** CLI принимает `--log-level silent` (логи глушатся, SQL на
+  stdout и exit-коды сохраняются); README не ссылается на несуществующие
+  флаги (`--no-comments`/`--no-header`/`--no-separate`,
+  `--allow-reorder-drop-comments`). Trace: C5-CLI-SILENT.
+
 ---
 
 ## Этап 6a — каноническая модель relation identifiers

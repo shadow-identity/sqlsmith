@@ -1,7 +1,11 @@
 {
 	"schemaVersion": 1,
 	"planPath": "docs/refactoring-backlog.md",
-	"priorities": ["P0", "P1", "P2"],
+	"priorities": [
+		"P0",
+		"P1",
+		"P2"
+	],
 	"boundaries": [
 		"core-public-api",
 		"core-fixture-golden",
@@ -135,6 +139,24 @@
 			"description": "Vite peer support, tested version, and plugin documentation agree."
 		},
 		{
+			"id": "R5-08",
+			"stage": "5",
+			"priority": "P1",
+			"description": "Watch rebuilds print only new or changed diagnostics; known ones collapse into a single counter line, reset only by a successful plan."
+		},
+		{
+			"id": "R5-09",
+			"stage": "5",
+			"priority": "P1",
+			"description": "Plugin debug level renders discovered files, dependency graph, and execution order through the shared core renderers."
+		},
+		{
+			"id": "R5-10",
+			"stage": "5",
+			"priority": "P2",
+			"description": "CLI accepts --log-level silent, and READMEs reference only flags that exist."
+		},
+		{
 			"id": "R6A-01",
 			"stage": "6a",
 			"priority": "P0",
@@ -222,224 +244,319 @@
 	"cases": [
 		{
 			"id": "C3-TYPED-PARSE",
-			"requirementIds": ["R3-01", "R3-02"],
+			"requirementIds": [
+				"R3-01",
+				"R3-02"
+			],
 			"boundary": "core-public-api",
 			"expected": "Malformed SQL and processor failures expose typed errors with file, line, processor, and cause context.",
 			"traceId": "T3-TYPED-PARSE"
 		},
 		{
 			"id": "C3-TYPED-FS",
-			"requirementIds": ["R3-01", "R3-02"],
+			"requirementIds": [
+				"R3-01",
+				"R3-02"
+			],
 			"boundary": "core-public-api",
 			"expected": "Directory, file-read, and output-write failures expose FileSystemError with operation and path.",
 			"traceId": "T3-TYPED-FS"
 		},
 		{
 			"id": "C3-EXIT-MATRIX",
-			"requirementIds": ["R3-03"],
+			"requirementIds": [
+				"R3-03"
+			],
 			"boundary": "cli-error-mapping",
 			"expected": "Every declared error code maps to exit 1, 2, 3, or 4 as documented.",
 			"traceId": "T3-EXIT-MATRIX"
 		},
 		{
 			"id": "C3-LOG-ONCE",
-			"requirementIds": ["R3-04", "R3-05"],
+			"requirementIds": [
+				"R3-04",
+				"R3-05"
+			],
 			"boundary": "cli-subprocess",
 			"expected": "Each failed command emits one sentinel error message, empty stdout, and no nested duplicate logging.",
 			"traceId": "T3-LOG-ONCE"
 		},
 		{
 			"id": "C3-REGRESSION",
-			"requirementIds": ["R3-06"],
+			"requirementIds": [
+				"R3-06"
+			],
 			"boundary": "workspace-regression",
 			"expected": "Build, all package tests, and golden output remain green.",
 			"traceId": "T3-REGRESSION"
 		},
 		{
 			"id": "C4-CONSTRUCTOR",
-			"requirementIds": ["R4-01", "R4-07"],
+			"requirementIds": [
+				"R4-01",
+				"R4-07"
+			],
 			"boundary": "compile-time-api",
 			"expected": "The documented constructor and typed dependency seam compile with no container symbols.",
 			"traceId": "T4-CONSTRUCTOR"
 		},
 		{
 			"id": "C4-SINGLE-PLAN",
-			"requirementIds": ["R4-02"],
+			"requirementIds": [
+				"R4-02"
+			],
 			"boundary": "core-public-api",
 			"expected": "Planning builds one graph and merge consumes the returned plan without rebuilding it.",
 			"traceId": "T4-SINGLE-PLAN"
 		},
 		{
 			"id": "C4-CYCLE",
-			"requirementIds": ["R4-03"],
+			"requirementIds": [
+				"R4-03"
+			],
 			"boundary": "core-public-api",
 			"expected": "Directory and in-memory planning report CIRCULAR_DEPENDENCY for cyclic input.",
 			"traceId": "T4-CYCLE"
 		},
 		{
 			"id": "C4-PRESENTATION",
-			"requirementIds": ["R4-04"],
+			"requirementIds": [
+				"R4-04"
+			],
 			"boundary": "core-public-api",
 			"expected": "Programmatic planning returns diagnostics without graph headers or progress output.",
 			"traceId": "T4-PRESENTATION"
 		},
 		{
 			"id": "C4-CLI",
-			"requirementIds": ["R4-05"],
+			"requirementIds": [
+				"R4-05"
+			],
 			"boundary": "cli-subprocess",
 			"expected": "Merge, info, and validate preserve SQL stdout, stderr presentation, diagnostics, and exit codes.",
 			"traceId": "T4-CLI"
 		},
 		{
 			"id": "C4-GOLDEN",
-			"requirementIds": ["R4-06"],
+			"requirementIds": [
+				"R4-06"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "Every existing correct scenario produces the same normalized SQL through MergePlan.",
 			"traceId": "T4-GOLDEN"
 		},
 		{
 			"id": "C5-SUITE",
-			"requirementIds": ["R5-01"],
+			"requirementIds": [
+				"R5-01"
+			],
 			"boundary": "workspace-regression",
 			"expected": "pnpm -r test executes and passes the Vite plugin suite.",
 			"traceId": "T5-SUITE"
 		},
 		{
 			"id": "C5-NESTED",
-			"requirementIds": ["R5-02"],
+			"requirementIds": [
+				"R5-02"
+			],
 			"boundary": "vite-plugin-hook",
 			"expected": "Nested SQL files are watched, planned, and emitted in dependency order.",
 			"traceId": "T5-NESTED"
 		},
 		{
 			"id": "C5-SILENT",
-			"requirementIds": ["R5-03"],
+			"requirementIds": [
+				"R5-03"
+			],
 			"boundary": "vite-plugin-hook",
 			"expected": "Silent buildStart writes the same output as info mode while producing no SQLsmith log entries.",
 			"traceId": "T5-SILENT"
 		},
 		{
 			"id": "C5-CONTAINMENT",
-			"requirementIds": ["R5-04"],
+			"requirementIds": [
+				"R5-04"
+			],
 			"boundary": "vite-plugin-hook",
 			"expected": "Sibling paths and generated output are excluded while true descendants are accepted.",
 			"traceId": "T5-CONTAINMENT"
 		},
 		{
 			"id": "C5-WATCH",
-			"requirementIds": ["R5-05"],
+			"requirementIds": [
+				"R5-05"
+			],
 			"boundary": "vite-plugin-hook",
 			"expected": "Create, update, and delete events each perform one rediscovery and regeneration.",
 			"traceId": "T5-WATCH"
 		},
 		{
 			"id": "C5-ATOMIC",
-			"requirementIds": ["R5-06"],
+			"requirementIds": [
+				"R5-06"
+			],
 			"boundary": "vite-build",
 			"expected": "A malformed update leaves the last good output unchanged and build failures reach Vite once.",
 			"traceId": "T5-ATOMIC"
 		},
 		{
 			"id": "C5-COMPAT",
-			"requirementIds": ["R5-07"],
+			"requirementIds": [
+				"R5-07"
+			],
 			"boundary": "documentation-capability",
 			"expected": "Peer range, tested Vite major, package metadata, and README support statement agree.",
 			"traceId": "T5-COMPAT"
 		},
 		{
+			"id": "C5-DEDUP",
+			"requirementIds": [
+				"R5-08"
+			],
+			"boundary": "vite-plugin-hook",
+			"expected": "Rebuilds collapse known diagnostics into one counter line; failed rebuilds keep the known set; debug prints everything.",
+			"traceId": "T5-DEDUP"
+		},
+		{
+			"id": "C5-DEBUG",
+			"requirementIds": [
+				"R5-09"
+			],
+			"boundary": "vite-plugin-hook",
+			"expected": "Debug builds render discovered files, dependency graph, and recommended order; info builds do not.",
+			"traceId": "T5-DEBUG"
+		},
+		{
+			"id": "C5-CLI-SILENT",
+			"requirementIds": [
+				"R5-10"
+			],
+			"boundary": "cli-subprocess",
+			"expected": "--log-level silent merges with empty stderr and SQL-only stdout; --help advertises silent.",
+			"traceId": "T5-CLI-SILENT"
+		},
+		{
 			"id": "C6A-MODEL",
-			"requirementIds": ["R6A-01"],
+			"requirementIds": [
+				"R6A-01"
+			],
 			"boundary": "core-public-api",
 			"expected": "Parsed relations expose immutable structured identifiers while merged statement SQL stays lossless.",
 			"traceId": "T6A-MODEL"
 		},
 		{
 			"id": "C6A-NORMALIZE",
-			"requirementIds": ["R6A-02"],
+			"requirementIds": [
+				"R6A-02"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "PostgreSQL unquoted and quoted names resolve with configured default-schema semantics.",
 			"traceId": "T6A-NORMALIZE"
 		},
 		{
 			"id": "C6A-COLLISION",
-			"requirementIds": ["R6A-03"],
+			"requirementIds": [
+				"R6A-03"
+			],
 			"boundary": "core-public-api",
 			"expected": "Quoted dots and schema separators produce distinct collision-safe relation keys.",
 			"traceId": "T6A-COLLISION"
 		},
 		{
 			"id": "C6A-GRAPH",
-			"requirementIds": ["R6A-04"],
+			"requirementIds": [
+				"R6A-04"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "Duplicate, missing, self, source-order, sort, and diagnostics agree on relation identity.",
 			"traceId": "T6A-GRAPH"
 		},
 		{
 			"id": "C6A-NAMESPACE",
-			"requirementIds": ["R6A-05"],
+			"requirementIds": [
+				"R6A-05"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "Same-schema relation types conflict and same display names in different schemas coexist.",
 			"traceId": "T6A-NAMESPACE"
 		},
 		{
 			"id": "C6A-LEXER",
-			"requirementIds": ["R6A-06"],
+			"requirementIds": [
+				"R6A-06"
+			],
 			"boundary": "core-public-api",
 			"expected": "The source lexer distinguishes quoting, doubled quotes, and dots inside identifiers.",
 			"traceId": "T6A-LEXER"
 		},
 		{
 			"id": "C6B-NESTED",
-			"requirementIds": ["R6B-01"],
+			"requirementIds": [
+				"R6B-01"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "Views depend on relations found in joins, derived tables, subqueries, and every set branch.",
 			"traceId": "T6B-NESTED"
 		},
 		{
 			"id": "C6B-CTE",
-			"requirementIds": ["R6B-02"],
+			"requirementIds": [
+				"R6B-02"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "CTE bodies contribute dependencies while local and recursive aliases never become missing relations.",
 			"traceId": "T6B-CTE"
 		},
 		{
 			"id": "C6B-RELATION",
-			"requirementIds": ["R6B-03"],
+			"requirementIds": [
+				"R6B-03"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "View-to-view and view-to-table chains sort correctly and repeated references are deduplicated.",
 			"traceId": "T6B-RELATION"
 		},
 		{
 			"id": "C6B-UNKNOWN",
-			"requirementIds": ["R6B-04"],
+			"requirementIds": [
+				"R6B-04"
+			],
 			"boundary": "core-public-api",
 			"expected": "Unsupported SELECT AST forms produce an explicit diagnostic or typed error instead of silent omission.",
 			"traceId": "T6B-UNKNOWN"
 		},
 		{
 			"id": "C6C-CAPABILITY",
-			"requirementIds": ["R6C-01"],
+			"requirementIds": [
+				"R6C-01"
+			],
 			"boundary": "documentation-capability",
 			"expected": "Every advertised dialect row has executable cases for each claimed P0 capability.",
 			"traceId": "T6C-CAPABILITY"
 		},
 		{
 			"id": "C6C-REGISTRY",
-			"requirementIds": ["R6C-02"],
+			"requirementIds": [
+				"R6C-02"
+			],
 			"boundary": "compile-time-api",
 			"expected": "Core type, CLI choices, plugin type, and documentation resolve from one supported registry.",
 			"traceId": "T6C-REGISTRY"
 		},
 		{
 			"id": "C6C-GOLDEN",
-			"requirementIds": ["R6C-03"],
+			"requirementIds": [
+				"R6C-03"
+			],
 			"boundary": "core-fixture-golden",
 			"expected": "Every remaining supported dialect passes base, FK, duplicate, missing, view, order, and golden cases.",
 			"traceId": "T6C-GOLDEN"
 		},
 		{
 			"id": "C6C-ADAPTER",
-			"requirementIds": ["R6C-04"],
+			"requirementIds": [
+				"R6C-04"
+			],
 			"boundary": "core-public-api",
 			"expected": "Dialect-specific AST inputs produce the common relation model through isolated adapters.",
 			"traceId": "T6C-ADAPTER"
@@ -448,193 +565,281 @@
 	"traces": [
 		{
 			"id": "T3-TYPED-PARSE",
-			"caseIds": ["C3-TYPED-PARSE"],
+			"caseIds": [
+				"C3-TYPED-PARSE"
+			],
 			"path": "packages/core/test/error-contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T3-TYPED-FS",
-			"caseIds": ["C3-TYPED-FS"],
+			"caseIds": [
+				"C3-TYPED-FS"
+			],
 			"path": "packages/core/test/file-system-validator.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T3-EXIT-MATRIX",
-			"caseIds": ["C3-EXIT-MATRIX"],
+			"caseIds": [
+				"C3-EXIT-MATRIX"
+			],
 			"path": "packages/cli/src/utils.exit-codes.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T3-LOG-ONCE",
-			"caseIds": ["C3-LOG-ONCE"],
+			"caseIds": [
+				"C3-LOG-ONCE"
+			],
 			"path": "packages/cli/src/cli.e2e.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T3-REGRESSION",
-			"caseIds": ["C3-REGRESSION"],
+			"caseIds": [
+				"C3-REGRESSION"
+			],
 			"path": "packages/core/test/golden-output.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-CONSTRUCTOR",
-			"caseIds": ["C4-CONSTRUCTOR"],
+			"caseIds": [
+				"C4-CONSTRUCTOR"
+			],
 			"path": "packages/core/test/public-api.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-SINGLE-PLAN",
-			"caseIds": ["C4-SINGLE-PLAN"],
+			"caseIds": [
+				"C4-SINGLE-PLAN"
+			],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-CYCLE",
-			"caseIds": ["C4-CYCLE"],
+			"caseIds": [
+				"C4-CYCLE"
+			],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-PRESENTATION",
-			"caseIds": ["C4-PRESENTATION"],
+			"caseIds": [
+				"C4-PRESENTATION"
+			],
 			"path": "packages/core/test/merge-plan.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-CLI",
-			"caseIds": ["C4-CLI"],
+			"caseIds": [
+				"C4-CLI"
+			],
 			"path": "packages/cli/src/cli.e2e.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T4-GOLDEN",
-			"caseIds": ["C4-GOLDEN"],
+			"caseIds": [
+				"C4-GOLDEN"
+			],
 			"path": "packages/core/test/golden-output.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-SUITE",
-			"caseIds": ["C5-SUITE"],
+			"caseIds": [
+				"C5-SUITE"
+			],
 			"path": "packages/vite-plugin/package.json",
 			"status": "executable"
 		},
 		{
 			"id": "T5-NESTED",
-			"caseIds": ["C5-NESTED"],
+			"caseIds": [
+				"C5-NESTED"
+			],
 			"path": "packages/vite-plugin/src/index.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-SILENT",
-			"caseIds": ["C5-SILENT"],
+			"caseIds": [
+				"C5-SILENT"
+			],
 			"path": "packages/vite-plugin/src/index.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-CONTAINMENT",
-			"caseIds": ["C5-CONTAINMENT"],
+			"caseIds": [
+				"C5-CONTAINMENT"
+			],
 			"path": "packages/vite-plugin/src/index.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-WATCH",
-			"caseIds": ["C5-WATCH"],
+			"caseIds": [
+				"C5-WATCH"
+			],
 			"path": "packages/vite-plugin/src/index.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-ATOMIC",
-			"caseIds": ["C5-ATOMIC"],
+			"caseIds": [
+				"C5-ATOMIC"
+			],
 			"path": "packages/vite-plugin/src/index.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T5-COMPAT",
-			"caseIds": ["C5-COMPAT"],
+			"caseIds": [
+				"C5-COMPAT"
+			],
 			"path": "packages/vite-plugin/test/vite-build.integration.test.ts",
 			"status": "executable"
 		},
 		{
+			"id": "T5-DEDUP",
+			"caseIds": [
+				"C5-DEDUP"
+			],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T5-DEBUG",
+			"caseIds": [
+				"C5-DEBUG"
+			],
+			"path": "packages/vite-plugin/src/index.test.ts",
+			"status": "executable"
+		},
+		{
+			"id": "T5-CLI-SILENT",
+			"caseIds": [
+				"C5-CLI-SILENT"
+			],
+			"path": "packages/cli/src/cli.e2e.test.ts",
+			"status": "executable"
+		},
+		{
 			"id": "T6A-MODEL",
-			"caseIds": ["C6A-MODEL"],
+			"caseIds": [
+				"C6A-MODEL"
+			],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6A-NORMALIZE",
-			"caseIds": ["C6A-NORMALIZE"],
+			"caseIds": [
+				"C6A-NORMALIZE"
+			],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6A-COLLISION",
-			"caseIds": ["C6A-COLLISION"],
+			"caseIds": [
+				"C6A-COLLISION"
+			],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6A-GRAPH",
-			"caseIds": ["C6A-GRAPH"],
+			"caseIds": [
+				"C6A-GRAPH"
+			],
 			"path": "packages/core/test/fixtures/postgresql/correct/identifier_contracts.expected.sql",
 			"status": "executable"
 		},
 		{
 			"id": "T6A-NAMESPACE",
-			"caseIds": ["C6A-NAMESPACE"],
+			"caseIds": [
+				"C6A-NAMESPACE"
+			],
 			"path": "packages/core/test/identifier-model.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6A-LEXER",
-			"caseIds": ["C6A-LEXER"],
+			"caseIds": [
+				"C6A-LEXER"
+			],
 			"path": "packages/core/test/sql-identifier-lexer.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6B-NESTED",
-			"caseIds": ["C6B-NESTED"],
+			"caseIds": [
+				"C6B-NESTED"
+			],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6B-CTE",
-			"caseIds": ["C6B-CTE"],
+			"caseIds": [
+				"C6B-CTE"
+			],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6B-RELATION",
-			"caseIds": ["C6B-RELATION"],
+			"caseIds": [
+				"C6B-RELATION"
+			],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6B-UNKNOWN",
-			"caseIds": ["C6B-UNKNOWN"],
+			"caseIds": [
+				"C6B-UNKNOWN"
+			],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6C-CAPABILITY",
-			"caseIds": ["C6C-CAPABILITY"],
+			"caseIds": [
+				"C6C-CAPABILITY"
+			],
 			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6C-REGISTRY",
-			"caseIds": ["C6C-REGISTRY"],
+			"caseIds": [
+				"C6C-REGISTRY"
+			],
 			"path": "packages/core/test/public-api.contract.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6C-GOLDEN",
-			"caseIds": ["C6C-GOLDEN"],
+			"caseIds": [
+				"C6C-GOLDEN"
+			],
 			"path": "packages/core/test/golden-output.test.ts",
 			"status": "executable"
 		},
 		{
 			"id": "T6C-ADAPTER",
-			"caseIds": ["C6C-ADAPTER"],
+			"caseIds": [
+				"C6C-ADAPTER"
+			],
 			"path": "packages/core/test/dialect-capabilities.contract.test.ts",
 			"status": "executable"
 		}
@@ -659,6 +864,9 @@
 			"C5-WATCH",
 			"C5-ATOMIC",
 			"C5-COMPAT",
+			"C5-DEDUP",
+			"C5-DEBUG",
+			"C5-CLI-SILENT",
 			"C6A-MODEL",
 			"C6A-NORMALIZE",
 			"C6A-COLLISION",

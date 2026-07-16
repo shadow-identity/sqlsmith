@@ -117,7 +117,7 @@ sqlsmith <input-directory> [options]
 - `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--no-validate-source-order` - Skip validation that statements within a file are declared before their dependents
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
-- `--log-level <level>` - error, warn, info, debug (default: info)
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Examples:**
 ```bash
@@ -127,8 +127,8 @@ sqlsmith ./schemas
 # Merge with file output
 sqlsmith ./schemas --output combined.sql
 
-# MySQL dialect with minimal output
-sqlsmith ./schemas --dialect mysql --no-comments --no-header
+# MySQL dialect
+sqlsmith ./schemas --dialect mysql
 
 # Quiet mode for CI/CD
 sqlsmith ./schemas --log-level error --output production.sql
@@ -149,7 +149,7 @@ sqlsmith info <input-directory> [options]
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
 - `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
-- `--log-level <level>` - error, warn, info, debug (default: info)
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -181,7 +181,7 @@ sqlsmith validate <input-directory> [options]
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
 - `--default-schema <schema>` - Schema assigned to unqualified relation names (PostgreSQL default: `public`)
 - `--allow-external-references` - Allow foreign keys referencing tables outside the input files
-- `--log-level <level>` - error, warn, info, debug (default: info)
+- `--log-level <level>` - silent, error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -499,18 +499,17 @@ with options and optional narrow dependencies, then use
 Presentation belongs to the caller; core exposes structured `MergePlan`
 diagnostics and does not print progress, graphs, or exceptions.
 
-### Output Formats
+### Output Format
 
-**Full Output (default):**
-- Header with timestamp and file order
-- File comments with dependencies  
+The merged SQL always includes:
+- Header with timestamp and statement order
+- Per-statement source and dependency comments
 - Original formatting preserved
 - Statement separation
 
-**Minimal Output (`--no-header --no-comments --no-separate`):**
-- Just the SQL statements
-- Perfect for direct database execution
-- Minimal file size
+Programmatic users can turn these off through `MergeOptions`
+(`addComments`, `includeHeader`, `separateStatements`); the CLI always
+emits the full format.
 
 ## Development
 
