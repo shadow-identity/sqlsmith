@@ -594,29 +594,25 @@
 			"id": "T6B-NESTED",
 			"caseIds": ["C6B-NESTED"],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Nested SELECT dependency traversal is implemented in stage 6b."
+			"status": "executable"
 		},
 		{
 			"id": "T6B-CTE",
 			"caseIds": ["C6B-CTE"],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "Scoped CTE traversal is implemented in stage 6b."
+			"status": "executable"
 		},
 		{
 			"id": "T6B-RELATION",
 			"caseIds": ["C6B-RELATION"],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "View relation-chain fixtures are added in stage 6b."
+			"status": "executable"
 		},
 		{
 			"id": "T6B-UNKNOWN",
 			"caseIds": ["C6B-UNKNOWN"],
 			"path": "packages/core/test/view-dependencies.contract.test.ts",
-			"status": "planned",
-			"pendingReason": "The unknown-AST policy is implemented and tested in stage 6b."
+			"status": "executable"
 		},
 		{
 			"id": "T6C-CAPABILITY",

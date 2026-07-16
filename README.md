@@ -22,7 +22,7 @@ SQLsmith is specifically designed for **SQL DDL statements** and focuses on:
 - ✅ **Composite foreign keys** and complex table structures
 - ✅ **Self-referencing tables** (hierarchical structures)
 - ✅ **Sequences** (CREATE SEQUENCE statements that tables depend on)
-- ✅ **Views** (CREATE VIEW statements that depend on tables/other views)
+- ✅ **Views** (recursive JOIN/subquery/CTE/set-operation dependencies across tables and views)
 - ✅ **Mixed scenarios** combining tables, sequences, and views
 
 **Passed through verbatim (not analyzed for dependencies):** statements no

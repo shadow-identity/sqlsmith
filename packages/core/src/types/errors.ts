@@ -273,6 +273,18 @@ export class ConfigurationError extends SqlMergerError {
 }
 
 export class ProcessingError extends SqlMergerError {
+	static unsupportedSelectShape(path: string, shape: string): ProcessingError {
+		return new ProcessingError(
+			`Unsupported SELECT AST shape '${shape}' at ${path}`,
+			ErrorCode.PROCESSOR_ERROR,
+			{
+				processorName: 'SelectRelationCollector',
+				path,
+				shape,
+			},
+		);
+	}
+
 	static processorError(
 		processorName: string,
 		originalError?: Error,

@@ -21,7 +21,7 @@ import type {
 	SqlFile,
 	SqlStatement,
 } from '../types/sql-statement.js';
-import { scanRelationNames } from './sql-identifier-lexer.js';
+import { scanCteAliases, scanRelationNames } from './sql-identifier-lexer.js';
 import { splitSqlStatements } from './sql-statement-splitter.js';
 
 const { Parser } = pkg;
@@ -166,6 +166,7 @@ export class SqlFileParser {
 				dialect,
 				identifierRules: createIdentifierRules(dialect, this.#defaultSchema),
 				relationNames: scanRelationNames(source),
+				cteAliases: scanCteAliases(source),
 			};
 
 			let ast: AST | AST[];

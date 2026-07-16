@@ -1,4 +1,5 @@
-import type { AST, Create as CreateView, Select } from 'node-sql-parser';
+import type { AST, Create as CreateView } from 'node-sql-parser';
+import { collectSelectRelations } from '../services/select-relation-collector.js';
 import {
 	createIdentifierRules,
 	createRelationIdentifier,
@@ -71,34 +72,26 @@ export class CreateViewProcessor implements StatementProcessor {
 		context: StatementProcessorContext | undefined,
 		rules: IdentifierRules,
 	): Dependency[] {
-		const dependencies: Dependency[] = [];
-
 		const definition = this.#extractViewDefinition(statement);
-		if (definition) {
-			const selectStatement = definition as Select;
-			const tables = this.#extractTableReferencesFromSelect(selectStatement);
-			const lexicalReferences =
-				context?.relationNames.filter(
-					(relation) =>
-						relation.role === 'reference' &&
-						relation.referenceKind !== 'references',
-				) ?? [];
-			const seen = new Set<string>();
+		if (!definition) return [];
 
-			for (const [index, table] of tables.entries()) {
-				const source = lexicalReferences[index] ?? table;
-				const identifier = createRelationIdentifier(source, rules);
-				if (seen.has(identifier.key)) continue;
-				seen.add(identifier.key);
-				dependencies.push({
-					identifier,
-					name: identifier.display,
-					type: 'table',
-				});
-			}
-		}
+		const sourceRelations =
+			context?.relationNames.filter(
+				(relation) =>
+					relation.role === 'reference' &&
+					relation.referenceKind !== 'references',
+			) ?? [];
+		const collection = collectSelectRelations(definition, {
+			identifierRules: rules,
+			sourceRelations,
+			sourceCteAliases: context?.cteAliases,
+		});
 
-		return dependencies;
+		return [...collection.relations.values()].map((identifier) => ({
+			identifier,
+			name: identifier.display,
+			type: 'table',
+		}));
 	}
 
 	#isCreateNode = (node: AST): boolean => {
@@ -139,25 +132,4 @@ export class CreateViewProcessor implements StatementProcessor {
 		const asRecord = node as unknown as Record<string, unknown>;
 		return asRecord.select ?? asRecord.definition;
 	};
-
-	#extractTableReferencesFromSelect(
-		selectStatement: Select,
-	): SourceRelationName[] {
-		const tables: SourceRelationName[] = [];
-
-		if (selectStatement.from && Array.isArray(selectStatement.from)) {
-			for (const from of selectStatement.from) {
-				if ('table' in from && from.table) {
-					tables.push(
-						unquotedRelationName(
-							from.table,
-							'db' in from && typeof from.db === 'string' ? from.db : undefined,
-						),
-					);
-				}
-			}
-		}
-
-		return tables;
-	}
 }

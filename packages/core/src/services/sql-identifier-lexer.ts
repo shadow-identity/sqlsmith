@@ -135,13 +135,91 @@ const tokenize = (sql: string): Token[] => {
 	return tokens;
 };
 
-const identifierPart = (token: Token): SourceIdentifierPart | undefined => {
-	if (token.kind !== 'word' && token.kind !== 'quoted') return undefined;
+const tokenIdentifierPart = (
+	token: Token | undefined,
+): SourceIdentifierPart | undefined => {
+	if (!token || (token.kind !== 'word' && token.kind !== 'quoted')) {
+		return undefined;
+	}
 	return {
 		value: token.value,
 		display: token.display,
 		quoted: token.kind === 'quoted',
 	};
+};
+
+const closingParenthesis = (
+	tokens: readonly Token[],
+	open: number,
+	end: number,
+): number | undefined => {
+	let depth = 0;
+	for (let index = open; index < end; index++) {
+		if (tokens[index]?.value === '(') depth++;
+		if (tokens[index]?.value !== ')') continue;
+		depth--;
+		if (depth === 0) return index;
+	}
+	return undefined;
+};
+
+/** Extract WITH aliases with their original quote metadata. */
+export const scanCteAliases = (sql: string): SourceIdentifierPart[] => {
+	const tokens = tokenize(sql);
+	const aliases: SourceIdentifierPart[] = [];
+
+	const scanRange = (start: number, end: number): void => {
+		let index = start;
+		while (index < end) {
+			if (
+				tokens[index]?.kind !== 'word' ||
+				tokens[index]?.value.toUpperCase() !== 'WITH'
+			) {
+				index++;
+				continue;
+			}
+
+			let cursor = index + 1;
+			if (tokens[cursor]?.value.toUpperCase() === 'RECURSIVE') cursor++;
+			let parsedAny = false;
+
+			while (cursor < end) {
+				const alias = tokenIdentifierPart(tokens[cursor]);
+				if (!alias) break;
+				let afterAlias = cursor + 1;
+				if (tokens[afterAlias]?.value === '(') {
+					const columnsEnd = closingParenthesis(tokens, afterAlias, end);
+					if (columnsEnd === undefined) break;
+					afterAlias = columnsEnd + 1;
+				}
+				if (tokens[afterAlias]?.value.toUpperCase() !== 'AS') break;
+				afterAlias++;
+				if (tokens[afterAlias]?.value.toUpperCase() === 'NOT') afterAlias++;
+				if (tokens[afterAlias]?.value.toUpperCase() === 'MATERIALIZED') {
+					afterAlias++;
+				}
+				if (tokens[afterAlias]?.value !== '(') break;
+				const bodyEnd = closingParenthesis(tokens, afterAlias, end);
+				if (bodyEnd === undefined) break;
+
+				aliases.push(alias);
+				parsedAny = true;
+				scanRange(afterAlias + 1, bodyEnd);
+				cursor = bodyEnd + 1;
+				if (tokens[cursor]?.value !== ',') break;
+				cursor++;
+			}
+
+			index = parsedAny ? cursor : index + 1;
+		}
+	};
+
+	scanRange(0, tokens.length);
+	return aliases;
+};
+
+const identifierPart = (token: Token): SourceIdentifierPart | undefined => {
+	return tokenIdentifierPart(token);
 };
 
 const parseRelationName = (

@@ -12,6 +12,11 @@ export { CreateViewProcessor } from './processors/create-view-processor.js';
 export { FileSystemValidator } from './services/file-system-validator.js';
 export type { LoggerOptions, LogLevel } from './services/logger.js';
 export { Logger } from './services/logger.js';
+export type {
+	SelectRelationCollection,
+	SelectRelationCollectorOptions,
+} from './services/select-relation-collector.js';
+export { collectSelectRelations } from './services/select-relation-collector.js';
 export type { MergeOptions } from './services/sql-file-merger.js';
 export type {
 	LexedRelationName,
@@ -19,7 +24,10 @@ export type {
 	RelationReferenceKind,
 	RelationStatementType,
 } from './services/sql-identifier-lexer.js';
-export { scanRelationNames } from './services/sql-identifier-lexer.js';
+export {
+	scanCteAliases,
+	scanRelationNames,
+} from './services/sql-identifier-lexer.js';
 export type { SqlStatementChunk } from './services/sql-statement-splitter.js';
 export { splitSqlStatements } from './services/sql-statement-splitter.js';
 // Core functionality

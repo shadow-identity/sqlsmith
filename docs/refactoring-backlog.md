@@ -503,6 +503,10 @@ API contract отдельно фиксирует immutable identifier fields и 
 
 ## Этап 6b — полные dependencies для views
 
+**Статус: completed.** Все C6B-трассы executable; scoped CTE traversal,
+nested/set-operation dependencies, view chains, unknown-AST policy и полный
+workspace build/test/Biome зелёные.
+
 ### Требования
 
 - **R6B-01 (P0):** view dependencies собираются из JOIN, derived table,

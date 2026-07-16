@@ -66,6 +66,18 @@ const merger = new SqlMerger(options, {
 `ServiceContainer` and the old parse/analyze/validate/merge convenience methods
 were removed; callers render `MergePlan` data at their application boundary.
 
+### View dependencies
+
+View analysis walks JOINs, derived tables, scalar/EXISTS subqueries, CTE
+bodies, recursive CTEs, and set-operation branches. CTE aliases are scoped and
+never become external relation dependencies; repeated underlying relations are
+deduplicated by `RelationKey`.
+
+`collectSelectRelations` is exported for custom processors. It returns both a
+key set and identifier metadata. Unknown relation-bearing SELECT/FROM shapes
+throw a typed `ProcessingError(PROCESSOR_ERROR)` instead of silently omitting a
+dependency.
+
 ### Processors
 
 - `CreateTableProcessor` - Handles CREATE TABLE statements
@@ -89,9 +101,9 @@ export interface StatementProcessor {
 }
 ```
 
-The optional context provides the original source chunk, dialect,
-identifier rules, and lexed relation-name tokens. Existing two-argument custom
-processors remain structurally compatible.
+The optional context provides the original source chunk, dialect, identifier
+rules, lexed relation-name tokens, and quote-aware CTE aliases. Existing
+two-argument custom processors remain structurally compatible.
 
 ### Extension points
 
