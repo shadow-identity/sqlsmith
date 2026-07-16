@@ -1,14 +1,15 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import type { AST } from 'node-sql-parser';
 import pkg from 'node-sql-parser';
 
 import type { StatementProcessor } from '../processors/base-processor.js';
 import type {
-	ParseResult,
 	SqlDialect,
 	SqlFile,
 	SqlStatement,
 } from '../types/sql-statement.js';
+import { splitSqlStatements } from './sql-statement-splitter.js';
 
 const { Parser } = pkg;
 
@@ -67,67 +68,92 @@ export class SqlFileParser {
 	}
 
 	/**
-	 * Parse a single SQL file
+	 * Parse a single SQL file.
+	 *
+	 * The file is split into per-statement chunks first; each chunk is
+	 * normalized and parsed independently, so every statement carries its own
+	 * original text (leading comments included). Chunks no processor
+	 * recognizes become `raw` statements — they are carried through the merge
+	 * verbatim, anchored to their file neighbours.
 	 */
 	parseFile(filePath: string, dialect: SqlDialect = 'postgresql'): SqlFile {
-		try {
-			const content = readFileSync(filePath, 'utf-8').trim();
+		const content = readFileSync(filePath, 'utf-8');
 
-			if (!content) {
-				return {
-					path: filePath,
-					content,
-					statements: [],
-				};
-			}
-
-			// Normalize SQL to avoid unsupported constructs in the underlying parser
-			const normalized = this.#normalizeSqlForParser(content, dialect);
-
-			const parseResult = this.parseContent(normalized, filePath, dialect);
-
-			// Update statement content with the original file content
-			// This is a simplified approach - in reality we'd need to track line ranges
-			for (const statement of parseResult.statements) {
-				statement.content = content; // For now, each statement gets the full file content
-			}
-
+		if (!content.trim()) {
 			return {
 				path: filePath,
 				content,
-				statements: parseResult.statements,
-				ast: parseResult.ast,
+				statements: [],
 			};
-		} catch (error) {
-			throw new Error(`Failed to parse file ${filePath}: ${error}`);
 		}
-	}
 
-	/**
-	 * Parse SQL content using registered processors
-	 */
-	parseContent(
-		sql: string,
-		filePath: string,
-		dialect: SqlDialect = 'postgresql',
-	): ParseResult {
-		try {
-			const opt = { database: dialect };
-			const { ast } = this.#parser.parse(sql, opt);
+		const chunks = splitSqlStatements(content, dialect);
+		const statements: SqlStatement[] = [];
+		const astNodes: AST[] = [];
 
-			const statements: SqlStatement[] = [];
+		chunks.forEach((chunk, index) => {
+			const normalized = this.#normalizeSqlForParser(chunk.text, dialect);
 
-			// Try each processor on the AST
-			for (const processor of this.#processors) {
-				const processorStatements = processor.extractStatements(ast, filePath);
-				statements.push(...processorStatements);
+			let ast: AST | AST[];
+			try {
+				({ ast } = this.#parser.parse(normalized, { database: dialect }));
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
+				throw new Error(
+					`Failed to parse file ${filePath}: statement starting at line ${chunk.startLine}: ${message}`,
+				);
 			}
 
-			return { ast, statements };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			throw new Error(`Failed to parse SQL content: ${message}`);
+			const nodes = Array.isArray(ast) ? ast : [ast];
+			if (nodes.length !== 1) {
+				throw new Error(
+					`Failed to parse file ${filePath}: statement starting at line ${chunk.startLine} unexpectedly parsed into ${nodes.length} statements`,
+				);
+			}
+			const node = nodes[0];
+			astNodes.push(node);
+
+			const statement =
+				this.#extractRecognizedStatement(node, filePath) ??
+				this.#buildRawStatement(node, filePath, index);
+
+			statement.content = (chunk.leadingTrivia + chunk.text).trim();
+			statement.orderInFile = index;
+			statement.lineNumber = chunk.startLine;
+			statements.push(statement);
+		});
+
+		return {
+			path: filePath,
+			content,
+			statements,
+			ast: astNodes,
+		};
+	}
+
+	#extractRecognizedStatement(
+		node: AST,
+		filePath: string,
+	): SqlStatement | undefined {
+		for (const processor of this.#processors) {
+			const extracted = processor.extractStatements(node, filePath);
+			if (extracted.length > 0) {
+				return extracted[0];
+			}
 		}
+		return undefined;
+	}
+
+	#buildRawStatement(node: AST, filePath: string, index: number): SqlStatement {
+		const fileName = filePath.split('/').pop() ?? filePath;
+		return {
+			type: 'raw',
+			name: `${fileName}#${index + 1}`,
+			dependsOn: [],
+			filePath,
+			content: '',
+			ast: node,
+		};
 	}
 
 	/**

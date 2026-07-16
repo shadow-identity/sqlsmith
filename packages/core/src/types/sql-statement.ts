@@ -5,7 +5,9 @@ export type StatementType =
 	| 'view'
 	| 'sequence'
 	| 'index'
-	| 'function';
+	| 'function'
+	/** A statement no processor recognizes; carried through the merge verbatim. */
+	| 'raw';
 
 export type SqlDialect = 'postgresql' | 'mysql' | 'sqlite' | 'bigquery';
 
@@ -20,6 +22,8 @@ export interface SqlStatement {
 	dependsOn: Dependency[];
 	filePath: string;
 	content: string;
+	/** 0-based position of the statement within its source file. */
+	orderInFile?: number;
 	lineNumber?: number;
 	ast?: AST;
 }
@@ -29,9 +33,4 @@ export interface SqlFile {
 	content: string;
 	statements: SqlStatement[];
 	ast?: AST | AST[];
-}
-
-export interface ParseResult {
-	ast: AST | AST[];
-	statements: SqlStatement[];
 }

@@ -42,35 +42,20 @@ export class CreateTableProcessor implements StatementProcessor {
 
 	#extractTableDependencies(statement: CreateTable): Dependency[] {
 		const dependencies: Dependency[] = [];
+		const seen = new Set<string>();
 
 		if (statement.create_definitions) {
 			for (const definition of statement.create_definitions) {
-				// Constraint-level FOREIGN KEY (e.g. `FOREIGN KEY (...) REFERENCES other(id)`)
-				if (
-					'constraint_type' in definition &&
-					definition.constraint_type === 'FOREIGN KEY' &&
-					'reference_definition' in definition &&
-					definition.reference_definition &&
-					Array.isArray(definition.reference_definition.table)
-				) {
-					for (const tbl of definition.reference_definition.table) {
-						if (tbl?.table) {
-							dependencies.push({
-								name: tbl.table,
-								type: 'table',
-							});
-						}
-					}
-				}
-
-				// Column-level `REFERENCES other(id)`
+				// Both constraint-level FOREIGN KEYs and column-level REFERENCES
+				// carry a reference_definition — one check covers both shapes.
 				if (
 					'reference_definition' in definition &&
 					definition.reference_definition &&
 					Array.isArray(definition.reference_definition.table)
 				) {
 					for (const tbl of definition.reference_definition.table) {
-						if (tbl?.table) {
+						if (tbl?.table && !seen.has(tbl.table)) {
+							seen.add(tbl.table);
 							dependencies.push({
 								name: tbl.table,
 								type: 'table',

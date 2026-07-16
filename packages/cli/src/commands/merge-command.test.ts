@@ -137,6 +137,21 @@ describe('executeMergeCommand', () => {
 			);
 		});
 
+		it('passes ordering and reference options through to the container', async () => {
+			await executeMergeCommand('./in', {
+				...defaultOptions,
+				validateSourceOrder: false,
+				allowExternalReferences: true,
+			});
+
+			expect(MockedServiceContainer).toHaveBeenCalledWith(
+				expect.objectContaining({
+					validateSourceOrder: false,
+					allowExternalReferences: true,
+				}),
+			);
+		});
+
 		it('merges the parsed files with presentation options', async () => {
 			const sqlFiles = [{ id: 'file1' }];
 			mockMerger.parseSqlFiles.mockReturnValue(sqlFiles);

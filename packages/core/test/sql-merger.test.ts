@@ -307,14 +307,13 @@ describe('SqlMerger', () => {
 			}).toThrow(FileSystemError);
 		});
 
-		it('should validate statement order in strict mode', () => {
-			const merger = new SqlMerger({ allowReorderDropComments: false });
+		it('should validate statement order within files by default', () => {
+			const merger = new SqlMerger();
 			const badOrderPath = getFixturePath(
 				'postgresql',
 				'invalid/bad_statement_order',
 			);
 
-			// In strict mode (allowReorderDropComments: false), should throw error for wrong order
 			expect(() => {
 				merger.parseSqlFiles(badOrderPath, 'postgresql');
 			}).toThrow('Invalid statement order');

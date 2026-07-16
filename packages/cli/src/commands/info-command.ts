@@ -5,6 +5,7 @@ import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
 export type InfoCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
+	allowExternalReferences?: boolean;
 };
 
 /**
@@ -18,6 +19,7 @@ export const executeInfoCommand = async (
 		loggerOptions: {
 			logLevel: options.logLevel,
 		},
+		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
 
 	// Resolve input path (already validated by CLI layer)

@@ -48,6 +48,10 @@ describe('handleCommandError exit codes', () => {
 		expectExitCode(DependencyError.circularDependency([['a', 'b', 'a']]), 3);
 	});
 
+	it('exits with 3 for missing dependencies', () => {
+		expectExitCode(DependencyError.missingDependency('orders', 'customers'), 3);
+	});
+
 	it('exits with 3 for duplicate statement names', () => {
 		expectExitCode(
 			DependencyError.duplicateStatementNames([

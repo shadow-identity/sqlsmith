@@ -1,0 +1,16 @@
+CREATE TABLE x (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE y (
+    id INTEGER PRIMARY KEY,
+    x_id INTEGER,
+    FOREIGN KEY (x_id) REFERENCES x(id)
+);
+
+CREATE TABLE z (
+    id INTEGER PRIMARY KEY,
+    y_id INTEGER,
+    FOREIGN KEY (y_id) REFERENCES y(id)
+);

@@ -71,19 +71,25 @@ export class CreateViewProcessor implements StatementProcessor {
 
 	#extractViewName = (node: AST): string | undefined => {
 		if (!this.#isCreateNode(node)) return undefined;
-		// Some parsers store view name at node.view, others under table[0].table
+		// node-sql-parser emits { view: { db, view } }; older shapes used a
+		// plain string at node.view or table[0].table
 		const asRecord = node as unknown as Record<string, unknown>;
-		const direct =
-			typeof asRecord.view === 'string' ? (asRecord.view as string) : undefined;
-		if (direct) return direct;
+		const viewField = asRecord.view;
+		if (typeof viewField === 'string') return viewField;
+		if (viewField && typeof viewField === 'object' && 'view' in viewField) {
+			const nested = (viewField as { view?: unknown }).view;
+			if (typeof nested === 'string') return nested;
+		}
 		const tableArr = asRecord.table as Array<{ table?: string }> | undefined;
 		return tableArr?.at(0)?.table;
 	};
 
 	#extractViewDefinition = (node: AST): unknown => {
 		if (!this.#isCreateNode(node)) return undefined;
+		// node-sql-parser stores the SELECT at node.select; keep the legacy
+		// node.definition fallback
 		const asRecord = node as unknown as Record<string, unknown>;
-		return asRecord.definition;
+		return asRecord.select ?? asRecord.definition;
 	};
 
 	#extractTableReferencesFromSelect(selectStatement: Select): string[] {

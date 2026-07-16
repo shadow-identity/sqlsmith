@@ -40,8 +40,12 @@ export const createProgram = (): Command => {
 			'postgresql',
 		)
 		.option(
-			'--allow-reorder-drop-comments',
-			'Allow reordering statements within files (drops comments)',
+			'--no-validate-source-order',
+			'Skip validation that statements within a file are declared before their dependents',
+		)
+		.option(
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
@@ -75,6 +79,10 @@ export const createProgram = (): Command => {
 			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
 			'postgresql',
 		)
+		.option(
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
+		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')
 				.choices(['error', 'warn', 'info', 'debug'])
@@ -99,6 +107,10 @@ export const createProgram = (): Command => {
 			'-d, --dialect <dialect>',
 			'SQL dialect (postgresql, mysql, sqlite, bigquery)',
 			'postgresql',
+		)
+		.option(
+			'--allow-external-references',
+			'Allow foreign keys referencing tables outside the input files',
 		)
 		.addOption(
 			new Option('--log-level <level>', 'Set log level')

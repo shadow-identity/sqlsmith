@@ -1,4 +1,4 @@
-import type { SqlFile, SqlStatement } from '../types/sql-statement.js';
+import type { SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
 
 export interface MergeOptions {
@@ -7,6 +7,11 @@ export interface MergeOptions {
 	includeHeader?: boolean;
 }
 
+/**
+ * Emits SQL statements in the order given (statement-level, not file-level).
+ * Pure computation: returns the merged string, never touches stdout or the
+ * file system.
+ */
 export class SqlFileMerger {
 	#logger: Logger;
 
@@ -31,108 +36,65 @@ export class SqlFileMerger {
 			return '';
 		}
 
-		const parts: string[] = [];
+		const blocks: string[] = [];
 
-		// Add header comment if requested
 		if (includeHeader) {
-			const timestamp = new Date().toISOString();
-			const statementCount = statements.length;
-			const uniqueFiles = new Set(
-				statements.map((s) => s.filePath.split('/').pop()),
-			).size;
-
-			const header = `-- SQLsmith Output
--- Generated: ${timestamp}
--- Files processed: ${uniqueFiles}
--- Statements merged: ${statementCount}
--- Order: ${statements.map((s) => `${s.type}:${s.name}`).join(' → ')}
-`;
-			parts.push(header);
+			blocks.push(this.#buildHeader(statements));
 		}
-
-		// Group statements by file to maintain file-level organization
-		const statementsByFile = new Map<string, SqlStatement[]>();
-		for (const statement of statements) {
-			if (!statementsByFile.has(statement.filePath)) {
-				statementsByFile.set(statement.filePath, []);
-			}
-			statementsByFile.get(statement.filePath)?.push(statement);
-		}
-
-		// Process each file's statements in topological order
-		const processedFiles = new Set<string>();
 
 		for (const statement of statements) {
-			const filePath = statement.filePath;
-
-			// Skip if we've already processed this file
-			if (processedFiles.has(filePath)) {
-				continue;
+			let block = '';
+			if (addComments) {
+				block += `${this.#buildStatementComment(statement)}\n`;
 			}
-
-			const fileName = filePath.split('/').pop() || 'unknown';
-			const fileStatements = statementsByFile.get(filePath) || [];
-
-			// Add file comment if requested
-			if (addComments && fileStatements.length > 0) {
-				const stmtDescriptions = fileStatements.map((stmt) => {
-					const deps =
-						stmt.dependsOn.length > 0
-							? ` (depends on: ${stmt.dependsOn.map((d) => d.name).join(', ')})`
-							: ' (no dependencies)';
-					return `${stmt.type.toUpperCase()}: ${stmt.name}${deps}`;
-				});
-
-				const fileComment = `
--- ================================================================
--- File: ${fileName}
--- Statements: ${stmtDescriptions.join(', ')}
--- ================================================================`;
-				parts.push(fileComment);
-			}
-
-			// Add file content
-			// For now, we use the original file content since we haven't implemented
-			// per-statement content extraction yet
-			if (fileStatements.length > 0) {
-				let content = fileStatements[0].content.trim();
-
-				// Ensure content ends with semicolon if it doesn't already
-				if (!content.endsWith(';')) {
-					content += ';';
-				}
-
-				parts.push(content);
-			}
-
-			processedFiles.add(filePath);
-
-			// Add separator between files if requested
-			if (separateStatements && processedFiles.size < statementsByFile.size) {
-				parts.push(''); // Empty line for separation
-			}
+			block += this.#ensureTerminated(statement.content.trim());
+			blocks.push(block);
 		}
 
-		const mergedContent = parts.join('\n');
+		const mergedContent = blocks.join(separateStatements ? '\n\n' : '\n');
 
 		this.#logMergeResults(statements, mergedContent);
 
 		return mergedContent;
 	}
 
-	/**
-	 * Merge SQL files (legacy compatibility method)
-	 */
-	mergeFiles(files: SqlFile[], options: MergeOptions = {}): string {
-		// Extract all statements and sort by their original order
-		// This is a simplified approach - ideally statements would already be sorted
-		const allStatements: SqlStatement[] = [];
+	#buildHeader(statements: SqlStatement[]): string {
+		const timestamp = new Date().toISOString();
+		const uniqueFiles = new Set(
+			statements.map((s) => s.filePath.split('/').pop()),
+		).size;
+		const order = statements
+			.map((s) => (s.type === 'raw' ? `raw:${s.name}` : `${s.type}:${s.name}`))
+			.join(' → ');
 
-		for (const file of files) {
-			allStatements.push(...file.statements);
+		return `-- SQLsmith Output
+-- Generated: ${timestamp}
+-- Files processed: ${uniqueFiles}
+-- Statements merged: ${statements.length}
+-- Order: ${order}
+`;
+	}
+
+	#buildStatementComment(statement: SqlStatement): string {
+		const fileName = statement.filePath.split('/').pop() || 'unknown';
+
+		if (statement.type === 'raw') {
+			return `-- raw statement (from ${fileName})`;
 		}
 
-		return this.mergeStatements(allStatements, options);
+		const deps =
+			statement.dependsOn.length > 0
+				? ` — depends on: ${statement.dependsOn.map((d) => d.name).join(', ')}`
+				: '';
+		return `-- ${statement.type}: ${statement.name} (from ${fileName})${deps}`;
+	}
+
+	#ensureTerminated(content: string): string {
+		// already ends with `;`, possibly followed by trailing comments
+		if (/;\s*(?:--[^\n]*\s*)*$/.test(content)) {
+			return content;
+		}
+		return `${content};`;
 	}
 
 	#logMergeResults(statements: SqlStatement[], content: string): void {

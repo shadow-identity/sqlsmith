@@ -7,7 +7,8 @@ export type MergeCommandOptions = {
 	output?: string;
 	dialect: SqlDialect;
 	logLevel: LogLevel;
-	allowReorderDropComments?: boolean;
+	validateSourceOrder?: boolean;
+	allowExternalReferences?: boolean;
 };
 
 /**
@@ -22,7 +23,8 @@ export const executeMergeCommand = async (
 		loggerOptions: {
 			logLevel: options.logLevel,
 		},
-		allowReorderDropComments: options.allowReorderDropComments ?? false,
+		validateSourceOrder: options.validateSourceOrder ?? true,
+		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
 
 	const logger = container.getLogger();

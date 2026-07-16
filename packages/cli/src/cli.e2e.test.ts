@@ -142,6 +142,55 @@ describe('sqlsmith CLI (end-to-end)', () => {
 		});
 	});
 
+	describe('statement-level ordering', () => {
+		it('emits interleaved cross-file dependencies in the correct order', async () => {
+			const { stdout, exitCode } = await runCli([
+				join(FIXTURES, 'correct/interleaved_dependencies'),
+			]);
+
+			expect(exitCode).toBe(0);
+			const posX = stdout.indexOf('CREATE TABLE x');
+			const posY = stdout.indexOf('CREATE TABLE y');
+			const posZ = stdout.indexOf('CREATE TABLE z');
+			expect(posX).toBeGreaterThanOrEqual(0);
+			expect(posX).toBeLessThan(posY);
+			expect(posY).toBeLessThan(posZ);
+		});
+
+		it('reorders out-of-order files with --no-validate-source-order', async () => {
+			const { stdout, exitCode } = await runCli([
+				join(FIXTURES, 'invalid/bad_statement_order'),
+				'--no-validate-source-order',
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout.indexOf('CREATE TABLE countries')).toBeLessThan(
+				stdout.indexOf('CREATE TABLE cities'),
+			);
+		});
+	});
+
+	describe('missing dependencies', () => {
+		it('exits with 3 when a FK references an unknown table', async () => {
+			const { exitCode, stderr } = await runCli([
+				join(FIXTURES, 'invalid/missing_dependency'),
+			]);
+
+			expect(exitCode).toBe(3);
+			expect(stderr).toContain('customers');
+		});
+
+		it('merges with --allow-external-references', async () => {
+			const { stdout, exitCode } = await runCli([
+				join(FIXTURES, 'invalid/missing_dependency'),
+				'--allow-external-references',
+			]);
+
+			expect(exitCode).toBe(0);
+			expect(stdout).toContain('CREATE TABLE orders');
+		});
+	});
+
 	describe('exit codes', () => {
 		it('exits with 3 for circular dependencies', async () => {
 			const { exitCode, stderr } = await runCli([

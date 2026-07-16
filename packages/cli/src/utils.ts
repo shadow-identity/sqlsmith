@@ -47,6 +47,7 @@ export const handleCommandError = (
 				break;
 			case ErrorCode.CIRCULAR_DEPENDENCY:
 			case ErrorCode.DUPLICATE_STATEMENT_NAMES:
+			case ErrorCode.MISSING_DEPENDENCY:
 				exitCode = 3;
 				break;
 			case ErrorCode.INVALID_OPTIONS:

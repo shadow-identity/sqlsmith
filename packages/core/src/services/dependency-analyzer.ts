@@ -1,17 +1,31 @@
 import type { DependencyGraph } from '../types/dependency-graph.js';
 import { DependencyError } from '../types/errors.js';
-import type { SqlFile, SqlStatement } from '../types/sql-statement.js';
+import type { SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
+
+export interface DependencyAnalyzerOptions {
+	/**
+	 * When true, dependencies on names not defined in the input set are
+	 * excluded from the graph with a warning instead of raising an error.
+	 */
+	allowExternalReferences?: boolean;
+}
 
 export class DependencyAnalyzer {
 	#logger: Logger;
+	#allowExternalReferences: boolean;
 
-	constructor(logger: Logger) {
+	constructor(logger: Logger, options: DependencyAnalyzerOptions = {}) {
 		this.#logger = logger;
+		this.#allowExternalReferences = options.allowExternalReferences ?? false;
 	}
 
 	/**
-	 * Build a dependency graph from SQL statements
+	 * Build a dependency graph from SQL statements.
+	 *
+	 * Raw statements never participate in the graph. A dependency on a name
+	 * that is not defined in the input set is an error unless
+	 * `allowExternalReferences` is enabled.
 	 */
 	buildStatementGraph(statements: SqlStatement[]): DependencyGraph<string> {
 		const graph: DependencyGraph<string> = {
@@ -20,12 +34,14 @@ export class DependencyAnalyzer {
 			reversedEdges: new Map(),
 		};
 
+		const recognized = statements.filter((s) => s.type !== 'raw');
+
 		const statementMap = new Map<string, SqlStatement>();
-		for (const stmt of statements) {
+		for (const stmt of recognized) {
 			statementMap.set(stmt.name, stmt);
 		}
 
-		for (const statement of statements) {
+		for (const statement of recognized) {
 			graph.nodes.add(statement.name);
 
 			if (!graph.edges.has(statement.name)) {
@@ -37,6 +53,17 @@ export class DependencyAnalyzer {
 
 			for (const dependency of statement.dependsOn) {
 				const depName = dependency.name;
+
+				if (!statementMap.has(depName)) {
+					if (!this.#allowExternalReferences) {
+						throw DependencyError.missingDependency(statement.name, depName);
+					}
+					this.#logger.warn(
+						`External reference: '${statement.name}' depends on '${depName}' which is not defined in the input files`,
+					);
+					continue;
+				}
+
 				graph.nodes.add(depName);
 
 				graph.edges.get(statement.name)?.add(depName);
@@ -49,19 +76,6 @@ export class DependencyAnalyzer {
 		}
 
 		return graph;
-	}
-
-	/**
-	 * Build dependency graph from SQL files (legacy compatibility)
-	 */
-	buildFileGraph(sqlFiles: SqlFile[]): DependencyGraph<string> {
-		const allStatements: SqlStatement[] = [];
-
-		for (const file of sqlFiles) {
-			allStatements.push(...file.statements);
-		}
-
-		return this.buildStatementGraph(allStatements);
 	}
 
 	/**
@@ -191,6 +205,9 @@ export class DependencyAnalyzer {
 		const duplicates: Array<{ name: string; files: string[] }> = [];
 
 		for (const statement of statements) {
+			if (statement.type === 'raw') {
+				continue;
+			}
 			const name = statement.name;
 			const fileName =
 				statement.filePath.split('/').pop() || statement.filePath;

@@ -16,9 +16,17 @@ import type {
 	SqlStatement,
 } from './types/sql-statement.js';
 
-// Legacy interface for backward compatibility
 export interface SqlMergerOptions {
-	allowReorderDropComments?: boolean;
+	/**
+	 * Validate that within each file a dependency is declared before its
+	 * dependents (source hygiene lint). Default: true.
+	 */
+	validateSourceOrder?: boolean;
+	/**
+	 * Allow foreign keys referencing tables that are not defined in the
+	 * input files. Default: false (missing dependencies are an error).
+	 */
+	allowExternalReferences?: boolean;
 	enableViews?: boolean;
 	enableSequences?: boolean;
 	logger?: Logger;
@@ -38,9 +46,9 @@ export class SqlMerger {
 			// Use provided container
 			this.#container = container;
 		} else {
-			// Convert legacy options to service configuration
 			const serviceConfig: ServiceConfiguration = {
-				allowReorderDropComments: options.allowReorderDropComments ?? false,
+				validateSourceOrder: options.validateSourceOrder ?? true,
+				allowExternalReferences: options.allowExternalReferences ?? false,
 				enableViews: options.enableViews ?? true,
 				enableSequences: options.enableSequences ?? true,
 				loggerOptions: {},
@@ -116,7 +124,7 @@ export class SqlMerger {
 			const graph = this.#dependencyAnalyzer.buildStatementGraph(allStatements);
 
 			const config = this.#container.getConfiguration();
-			if (!config.allowReorderDropComments) {
+			if (config.validateSourceOrder) {
 				this.#validateStatementOrderWithinFiles(sqlFiles);
 			}
 
@@ -148,7 +156,10 @@ export class SqlMerger {
 	}
 
 	/**
-	 * Merge SQL files with automatic dependency resolution
+	 * Merge SQL files with automatic dependency resolution.
+	 *
+	 * Recognized statements are topologically sorted; raw statements are then
+	 * woven back in next to their in-file neighbours.
 	 */
 	mergeFiles(files: SqlFile[], options: MergeOptions = {}): string {
 		return this.#errorHandler.wrapWithErrorHandling(() => {
@@ -161,15 +172,105 @@ export class SqlMerger {
 				allStatements.push(...file.statements);
 			}
 
-			const graph = this.#dependencyAnalyzer.buildStatementGraph(allStatements);
+			const recognized = allStatements.filter((s) => s.type !== 'raw');
+			const rawStatements = allStatements.filter((s) => s.type === 'raw');
+
+			if (rawStatements.length > 0) {
+				this.#logger.warn(
+					`${rawStatements.length} unrecognized statement(s) are carried through verbatim: ${rawStatements
+						.map((s) => s.name)
+						.join(', ')}`,
+				);
+			}
+
+			const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
 			const sortedStatements = this.#topologicalSorter.sortStatements(
-				allStatements,
+				recognized,
 				graph,
 			);
 
-			return this.#fileMerger.mergeStatements(sortedStatements, options);
+			const finalStatements = this.#weaveRawStatements(
+				sortedStatements,
+				allStatements,
+			);
+
+			return this.#fileMerger.mergeStatements(finalStatements, options);
 		}, 'mergeFiles')();
 	}
+
+	/**
+	 * Weave raw statements back into the sorted output: each raw statement
+	 * follows the closest preceding recognized statement of its own file
+	 * (or precedes the closest following one). Files with no recognized
+	 * statements are appended at the end.
+	 */
+	#weaveRawStatements = (
+		sorted: SqlStatement[],
+		all: SqlStatement[],
+	): SqlStatement[] => {
+		const rawStatements = all.filter((s) => s.type === 'raw');
+		if (rawStatements.length === 0) {
+			return sorted;
+		}
+
+		const recognizedByFile = new Map<string, SqlStatement[]>();
+		for (const statement of all) {
+			if (statement.type === 'raw') continue;
+			const list = recognizedByFile.get(statement.filePath) ?? [];
+			list.push(statement);
+			recognizedByFile.set(statement.filePath, list);
+		}
+		for (const list of recognizedByFile.values()) {
+			list.sort((a, b) => (a.orderInFile ?? 0) - (b.orderInFile ?? 0));
+		}
+
+		const emitAfter = new Map<SqlStatement, SqlStatement[]>();
+		const emitBefore = new Map<SqlStatement, SqlStatement[]>();
+		const tail: SqlStatement[] = [];
+
+		for (const raw of rawStatements) {
+			const neighbours = recognizedByFile.get(raw.filePath) ?? [];
+			const rawOrder = raw.orderInFile ?? 0;
+
+			const anchorAfter = [...neighbours]
+				.reverse()
+				.find((s) => (s.orderInFile ?? 0) < rawOrder);
+			if (anchorAfter) {
+				const list = emitAfter.get(anchorAfter) ?? [];
+				list.push(raw);
+				emitAfter.set(anchorAfter, list);
+				continue;
+			}
+
+			const anchorBefore = neighbours.find(
+				(s) => (s.orderInFile ?? 0) > rawOrder,
+			);
+			if (anchorBefore) {
+				const list = emitBefore.get(anchorBefore) ?? [];
+				list.push(raw);
+				emitBefore.set(anchorBefore, list);
+				continue;
+			}
+
+			tail.push(raw);
+		}
+
+		const result: SqlStatement[] = [];
+		for (const statement of sorted) {
+			result.push(...(emitBefore.get(statement) ?? []));
+			result.push(statement);
+			result.push(...(emitAfter.get(statement) ?? []));
+		}
+
+		if (tail.length > 0) {
+			this.#logger.warn(
+				`${tail.length} statement(s) from files with no recognized statements are appended at the end of the output`,
+			);
+			result.push(...tail);
+		}
+
+		return result;
+	};
 
 	/**
 	 * Analyze dependencies without merging (info command)
@@ -183,14 +284,14 @@ export class SqlMerger {
 
 			const sqlFiles = this.parseSqlFiles(directoryPath, dialect);
 
-			const allStatements: SqlStatement[] = [];
+			const recognized: SqlStatement[] = [];
 			for (const file of sqlFiles) {
-				allStatements.push(...file.statements);
+				recognized.push(...file.statements.filter((s) => s.type !== 'raw'));
 			}
 
-			const graph = this.#dependencyAnalyzer.buildStatementGraph(allStatements);
+			const graph = this.#dependencyAnalyzer.buildStatementGraph(recognized);
 			const sortedStatements = this.#topologicalSorter.sortStatements(
-				allStatements,
+				recognized,
 				graph,
 			);
 

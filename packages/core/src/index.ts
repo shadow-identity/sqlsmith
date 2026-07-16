@@ -17,6 +17,8 @@ export { ServiceContainer } from './services/service-container.js';
 export type { MergeOptions } from './services/sql-file-merger.js';
 export { SqlFileMerger } from './services/sql-file-merger.js';
 export { SqlFileParser } from './services/sql-file-parser.js';
+export type { SqlStatementChunk } from './services/sql-statement-splitter.js';
+export { splitSqlStatements } from './services/sql-statement-splitter.js';
 export { TopologicalSorter } from './services/topological-sorter.js';
 // Core functionality
 export type { SqlMergerOptions } from './sql-merger.js';

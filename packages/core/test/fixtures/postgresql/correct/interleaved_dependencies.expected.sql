@@ -1,0 +1,16 @@
+CREATE TABLE x (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE y (
+    id SERIAL PRIMARY KEY,
+    x_id INTEGER,
+    FOREIGN KEY (x_id) REFERENCES x(id)
+);
+
+CREATE TABLE z (
+    id SERIAL PRIMARY KEY,
+    y_id INTEGER,
+    FOREIGN KEY (y_id) REFERENCES y(id)
+);

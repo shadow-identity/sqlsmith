@@ -5,7 +5,7 @@ A sophisticated tool for merging SQL files with automatic dependency resolution 
 ## Features
 
 🔍 **Smart Table Dependency Detection** - Automatically analyzes FOREIGN KEY constraints in CREATE TABLE statements to understand table-to-table dependencies  
-🔄 **Topological Sorting** - Uses Kahn's algorithm to determine safe execution order  
+🔄 **Statement-Level Topological Sorting** - Uses Kahn's algorithm to order individual statements safely, even when dependencies interleave across files  
 🛡️ **Circular Dependency Detection** - Prevents invalid schemas with clear error messages  
 🚫 **Duplicate Table Validation** - Detects duplicate table names across multiple files  
 📋 **Statement Order Validation** - Ensures CREATE TABLE statements within files follow dependency order  
@@ -24,6 +24,11 @@ SQLsmith is specifically designed for **SQL DDL statements** and focuses on:
 - ✅ **Sequences** (CREATE SEQUENCE statements that tables depend on)
 - ✅ **Views** (CREATE VIEW statements that depend on tables/other views)
 - ✅ **Mixed scenarios** combining tables, sequences, and views
+
+**Passed through verbatim (not analyzed for dependencies):** statements no
+processor recognizes — e.g. `CREATE INDEX`, `ALTER TABLE`, `INSERT`,
+`COMMENT ON` — are kept in the output next to the recognized statement they
+follow in their source file.
 
 **Not currently supported:**
 - ❌ User-defined types (ENUM, DOMAIN, composite types)
@@ -107,14 +112,11 @@ sqlsmith <input-directory> [options]
 - `<input-directory>` - Directory containing SQL files to merge
 
 **Options:**
-- `-o, --output <path>` - Output file path (default: stdout)
+- `-o, --output <path>` - Output file path (default: stdout; stdout carries only the merged SQL, all logs go to stderr)
 - `-d, --dialect <dialect>` - SQL dialect: postgresql, mysql, sqlite, bigquery (default: postgresql)
-- `--no-comments` - Disable file comments in output
-- `--no-header` - Disable header comment in output  
-- `--no-separate` - Disable statement separation
-- `--allow-reorder-drop-comments` - Allow statement reordering within files (bypasses intra-file validation)
-- `--quiet` - Reduce console output
-- `--verbose` - Increase console output for debugging
+- `--no-validate-source-order` - Skip validation that statements within a file are declared before their dependents
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - error, warn, info, debug (default: info)
 
 **Examples:**
 ```bash
@@ -128,10 +130,10 @@ sqlsmith ./schemas --output combined.sql
 sqlsmith ./schemas --dialect mysql --no-comments --no-header
 
 # Quiet mode for CI/CD
-sqlsmith ./schemas --quiet --output production.sql
+sqlsmith ./schemas --log-level error --output production.sql
 
-# Allow statement reordering for files with mixed dependencies
-sqlsmith ./legacy-schemas --allow-reorder-drop-comments --output fixed.sql
+# Reorder statements from files with mixed declaration order
+sqlsmith ./legacy-schemas --no-validate-source-order --output fixed.sql
 ```
 
 ### Info Command
@@ -143,8 +145,9 @@ sqlsmith info <input-directory> [options]
 ```
 
 **Options:**
-- `-d, --dialect <dialect>` - SQL dialect (default: postgresql)  
-- `--quiet` - Reduce console output
+- `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -174,7 +177,8 @@ sqlsmith validate <input-directory> [options]
 
 **Options:**
 - `-d, --dialect <dialect>` - SQL dialect (default: postgresql)
-- `--quiet` - Reduce console output
+- `--allow-external-references` - Allow foreign keys referencing tables outside the input files
+- `--log-level <level>` - error, warn, info, debug (default: info)
 
 **Example:**
 ```bash
@@ -305,10 +309,10 @@ CREATE TABLE comments (
 
 ```bash
 # In your build pipeline
-sqlsmith ./database/schemas --quiet --output deploy/schema.sql
+sqlsmith ./database/schemas --log-level error --output deploy/schema.sql
 
 # Validate before deployment
-sqlsmith validate ./database/schemas --quiet
+sqlsmith validate ./database/schemas --log-level error
 if [ $? -eq 0 ]; then
     echo "✅ Schema validation passed"
     psql -f deploy/schema.sql
@@ -322,7 +326,7 @@ fi
 
 ```bash
 # Direct execution
-sqlsmith ./schemas --quiet --no-header --no-comments | psql mydb
+sqlsmith ./schemas | psql mydb  # logs go to stderr, stdout is pure SQL
 
 # Or save and execute
 sqlsmith ./schemas --output schema.sql
@@ -343,7 +347,14 @@ SQL Merger performs several validation checks to ensure schema integrity:
 **Statement Order Validation:**
 - Ensures CREATE TABLE statements within individual files follow dependency order
 - Catches incorrect ordering that could cause execution failures
-- Can be bypassed with `--allow-reorder-drop-comments` for legacy schemas
+- Can be skipped with `--no-validate-source-order`; statements are then reordered
+  safely at merge time, comments travel with their statements
+
+**Missing Dependency Detection:**
+- A FOREIGN KEY referencing a table that is not defined in the input files is an
+  error (exit code 3)
+- Use `--allow-external-references` when the referenced tables exist outside the
+  merged file set
 
 **Circular Dependency Detection:**
 - Uses DFS algorithm to detect impossible dependency chains
@@ -371,13 +382,30 @@ This is **not** considered a circular dependency since it's a valid hierarchical
 For legacy schemas with mixed statement ordering:
 
 ```bash
-# Bypass intra-file validation for problematic files
-sqlsmith ./legacy-schemas --allow-reorder-drop-comments
+# Skip intra-file declaration-order validation; the merge reorders statements safely
+sqlsmith ./legacy-schemas --no-validate-source-order
 
-# Note: This may drop comments during reordering
+# Comments are preserved: each comment travels with the statement below it
 ```
 
 ## Error Handling
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error (e.g. SQL syntax) |
+| 2 | Input/file errors (missing directory, no SQL files) |
+| 3 | Dependency errors (circular, duplicate names, missing dependency) |
+| 4 | Configuration errors (invalid options) |
+
+### Missing Dependencies
+```bash
+$ sqlsmith ./schemas
+❌ Error: Statement 'orders' depends on 'customers' which was not found
+# exits with code 3; use --allow-external-references if intentional
+```
 
 ### Circular Dependencies
 ```bash
@@ -428,10 +456,12 @@ $ sqlsmith ./nonexistent
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `addComments` | `true` | Include file and dependency comments |
-| `includeHeader` | `true` | Include generation timestamp and file list |
-| `separateStatements` | `true` | Add blank lines between files |
-| `outputPath` | `undefined` | File path for output (default: stdout) |
+| `addComments` | `true` | Include per-statement source and dependency comments |
+| `includeHeader` | `true` | Include generation timestamp and statement order |
+| `separateStatements` | `true` | Add blank lines between statements |
+
+`mergeFiles` returns the merged SQL as a string; writing it to a file or stdout
+is the caller's responsibility (the CLI handles this via `--output`).
 
 ### Output Formats
 

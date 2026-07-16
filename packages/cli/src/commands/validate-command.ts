@@ -5,6 +5,7 @@ import { ServiceContainer, type SqlDialect, SqlMerger } from '@sqlsmith/core';
 export type ValidateCommandOptions = {
 	dialect: SqlDialect;
 	logLevel: LogLevel;
+	allowExternalReferences?: boolean;
 };
 
 /**
@@ -18,6 +19,7 @@ export const executeValidateCommand = async (
 		loggerOptions: {
 			logLevel: options.logLevel,
 		},
+		allowExternalReferences: options.allowExternalReferences ?? false,
 	});
 
 	const logger = container.getLogger();

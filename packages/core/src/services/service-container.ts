@@ -19,7 +19,10 @@ export interface ServiceConfiguration {
 	// SQL processing configuration
 	enableViews?: boolean;
 	enableSequences?: boolean;
-	allowReorderDropComments?: boolean;
+	/** Require in-file declaration order to respect dependencies (default: true). */
+	validateSourceOrder?: boolean;
+	/** Allow references to tables outside the input set (default: false). */
+	allowExternalReferences?: boolean;
 
 	// Default dialect
 	defaultDialect?: SqlDialect;
@@ -34,7 +37,8 @@ export class ServiceContainer {
 			loggerOptions: {},
 			enableViews: true,
 			enableSequences: true,
-			allowReorderDropComments: false,
+			validateSourceOrder: true,
+			allowExternalReferences: false,
 			defaultDialect: 'postgresql',
 			...configuration,
 		};
@@ -80,7 +84,10 @@ export class ServiceContainer {
 	getDependencyAnalyzer(): DependencyAnalyzer {
 		return this.get(
 			'dependencyAnalyzer',
-			() => new DependencyAnalyzer(this.getLogger()),
+			() =>
+				new DependencyAnalyzer(this.getLogger(), {
+					allowExternalReferences: this.#configuration.allowExternalReferences,
+				}),
 		);
 	}
 
@@ -138,11 +145,9 @@ export class ServiceContainer {
 	updateConfiguration(newConfiguration: Partial<ServiceConfiguration>): void {
 		this.#configuration = { ...this.#configuration, ...newConfiguration };
 
-		// Clear services that depend on configuration
-		this.#services.delete('logger');
-		this.#services.delete('errorHandler');
-		this.#services.delete('statementProcessors');
-		this.#services.delete('sqlFileParser');
+		// Every cached service either depends on the configuration or holds a
+		// logger built from it — rebuild them all on the next request.
+		this.#services.clear();
 	}
 
 	/**

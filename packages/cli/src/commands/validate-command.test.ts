@@ -68,11 +68,13 @@ describe('executeValidateCommand', () => {
 			await executeValidateCommand(inputPath, defaultOptions);
 
 			// Verify ServiceContainer is created with correct options
-			expect(MockedServiceContainer).toHaveBeenCalledWith({
-				loggerOptions: {
-					logLevel: 'info',
-				},
-			});
+			expect(MockedServiceContainer).toHaveBeenCalledWith(
+				expect.objectContaining({
+					loggerOptions: {
+						logLevel: 'info',
+					},
+				}),
+			);
 
 			// Verify path resolution
 			expect(mockedResolve).toHaveBeenCalledWith(inputPath);

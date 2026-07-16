@@ -1,5 +1,5 @@
 import type { DependencyGraph } from '../types/dependency-graph.js';
-import type { SqlFile, SqlStatement } from '../types/sql-statement.js';
+import type { SqlStatement } from '../types/sql-statement.js';
 import type { Logger } from './logger.js';
 
 export class TopologicalSorter {
@@ -85,47 +85,19 @@ export class TopologicalSorter {
 
 		for (const name of sortedNames) {
 			const statement = statementMap.get(name);
-			if (statement) {
-				sortedStatements.push(statement);
+			if (!statement) {
+				// The graph is built from the same statement set, so every node
+				// must resolve; a miss means the two inputs diverged.
+				throw new Error(
+					`Internal error: graph node '${name}' has no matching statement`,
+				);
 			}
+			sortedStatements.push(statement);
 		}
 
 		this.#logSortResults(sortedStatements);
 
 		return sortedStatements;
-	}
-
-	/**
-	 * Sort SQL files (legacy compatibility method)
-	 */
-	sortFiles(files: SqlFile[], graph: DependencyGraph<string>): SqlFile[] {
-		// Extract all statements from files
-		const allStatements: SqlStatement[] = [];
-		const fileToStatements = new Map<string, SqlStatement[]>();
-
-		for (const file of files) {
-			fileToStatements.set(file.path, file.statements);
-			allStatements.push(...file.statements);
-		}
-
-		// Sort statements
-		const sortedStatements = this.sortStatements(allStatements, graph);
-
-		// Convert back to files in order, ensuring each file appears only once
-		const sortedFiles: SqlFile[] = [];
-		const processedFiles = new Set<string>();
-
-		for (const statement of sortedStatements) {
-			if (!processedFiles.has(statement.filePath)) {
-				const originalFile = files.find((f) => f.path === statement.filePath);
-				if (originalFile) {
-					sortedFiles.push(originalFile);
-					processedFiles.add(statement.filePath);
-				}
-			}
-		}
-
-		return sortedFiles;
 	}
 
 	#logSortResults(sortedStatements: SqlStatement[]): void {
