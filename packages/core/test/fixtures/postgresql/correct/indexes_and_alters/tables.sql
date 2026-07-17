@@ -1,0 +1,13 @@
+CREATE TABLE orgs (
+    id SERIAL PRIMARY KEY
+);
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    org_id INTEGER,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE "Users" (
+    "Id" INTEGER PRIMARY KEY
+);

@@ -260,7 +260,7 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			expect(stderr).toContain('External reference');
 		});
 
-		it('renders raw passthrough diagnostics at the CLI boundary', async () => {
+		it('renders raw passthrough diagnostics at the CLI boundary as info', async () => {
 			const { stdout, stderr, exitCode } = await runCli([
 				join(FIXTURES, 'correct/raw_statements'),
 			]);
@@ -268,6 +268,7 @@ describe('sqlsmith CLI (end-to-end)', () => {
 			expect(exitCode).toBe(0);
 			expect(stdout).toContain('CREATE INDEX idx_users_name');
 			expect(stderr).toContain('unrecognized statement(s)');
+			expect(stderr).not.toContain('⚠️');
 		});
 	});
 

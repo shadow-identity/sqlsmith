@@ -7,9 +7,16 @@ export interface DiscoveryOptions {
 	exclude?: readonly string[];
 }
 
+/**
+ * `info` marks expected, order-safe situations; `warning` marks output whose
+ * emitted order the merger cannot guarantee.
+ */
+export type MergeDiagnosticSeverity = 'info' | 'warning';
+
 export type MergeDiagnostic =
 	| {
 			readonly code: 'EXTERNAL_REFERENCE';
+			readonly severity: MergeDiagnosticSeverity;
 			readonly message: string;
 			readonly statementName: string;
 			readonly statementKey: RelationKey;
@@ -18,15 +25,28 @@ export type MergeDiagnostic =
 	  }
 	| {
 			readonly code: 'RAW_STATEMENTS';
+			readonly severity: MergeDiagnosticSeverity;
 			readonly message: string;
 			readonly count: number;
 			readonly statements: readonly string[];
 	  }
 	| {
 			readonly code: 'RAW_ONLY_FILE';
+			readonly severity: MergeDiagnosticSeverity;
 			readonly message: string;
 			readonly count: number;
 			readonly statements: readonly string[];
+	  }
+	| {
+			/** A raw statement references a relation recognized in a different file. */
+			readonly code: 'RAW_CROSS_FILE_REFERENCE';
+			readonly severity: MergeDiagnosticSeverity;
+			readonly message: string;
+			readonly statementName: string;
+			readonly dependencyName: string;
+			readonly dependencyKey: RelationKey;
+			readonly filePath: string;
+			readonly definitionFilePath: string;
 	  };
 
 export interface DependencyAnalysis {

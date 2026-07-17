@@ -102,7 +102,7 @@ describe('MergePlan contract', () => {
 		);
 		expect(rawPlan.diagnostics).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ code: 'RAW_STATEMENTS', count: 4 }),
+				expect.objectContaining({ code: 'RAW_STATEMENTS', count: 2 }),
 			]),
 		);
 	});

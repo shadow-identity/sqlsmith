@@ -6,15 +6,13 @@ export const renderDiagnostic = (
 	logger: Logger,
 	diagnostic: MergeDiagnostic,
 ): void => {
+	const write = diagnostic.severity === 'info' ? logger.info : logger.warn;
 	switch (diagnostic.code) {
-		case 'EXTERNAL_REFERENCE':
-			logger.warn(diagnostic.message);
-			break;
 		case 'RAW_STATEMENTS':
-			logger.warn(`${diagnostic.message}: ${diagnostic.statements.join(', ')}`);
+			write(`${diagnostic.message}: ${diagnostic.statements.join(', ')}`);
 			break;
-		case 'RAW_ONLY_FILE':
-			logger.warn(diagnostic.message);
+		default:
+			write(diagnostic.message);
 			break;
 	}
 };

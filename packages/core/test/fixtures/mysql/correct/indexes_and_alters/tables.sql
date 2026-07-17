@@ -1,0 +1,16 @@
+CREATE TABLE a (
+    x INTEGER
+);
+
+CREATE TABLE b (
+    y INTEGER
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER
+);
+
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY
+);

@@ -1,14 +1,17 @@
 // SQLsmith - Main exports
 
 // Processors (for extending functionality)
+export { AlterTableProcessor } from './processors/alter-table-processor.js';
 export type {
 	StatementProcessor,
 	StatementProcessorContext,
 } from './processors/base-processor.js';
+export { CreateIndexProcessor } from './processors/create-index-processor.js';
 export { CreateSequenceProcessor } from './processors/create-sequence-processor.js';
 export { CreateTableProcessor } from './processors/create-table-processor.js';
 export { CreateViewProcessor } from './processors/create-view-processor.js';
 export type {
+	AstIndexDeclaration,
 	AstRelationName,
 	AstRelationStatementType,
 	DialectAstAdapter,
@@ -81,10 +84,12 @@ export {
 export type {
 	DiscoveryOptions,
 	MergeDiagnostic,
+	MergeDiagnosticSeverity,
 	MergePlan,
 } from './types/merge-plan.js';
 export type {
 	DialectRules,
+	IdentifierNamespace,
 	IdentifierPart,
 	RelationIdentifier,
 	RelationKey,
@@ -94,6 +99,7 @@ export type {
 export {
 	createDialectRules,
 	createRelationIdentifier,
+	createSecondaryIdentifier,
 	unquotedRelationName,
 } from './types/relation-identifier.js';
 export type {

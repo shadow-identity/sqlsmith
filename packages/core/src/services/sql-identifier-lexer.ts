@@ -5,8 +5,14 @@ import type {
 } from '../types/relation-identifier.js';
 
 export type RelationNameRole = 'declaration' | 'reference';
-export type RelationStatementType = 'table' | 'view' | 'sequence';
-export type RelationReferenceKind = 'references' | 'from' | 'join';
+export type RelationStatementType = 'table' | 'view' | 'sequence' | 'index';
+export type RelationReferenceKind =
+	| 'references'
+	| 'from'
+	| 'join'
+	| 'on'
+	| 'alter'
+	| 'into';
 
 export interface LexedRelationName extends SourceRelationName {
 	readonly role: RelationNameRole;
@@ -292,6 +298,7 @@ const declarationType = (
 	if (keyword === 'TABLE') return 'table';
 	if (keyword === 'VIEW') return 'view';
 	if (keyword === 'SEQUENCE') return 'sequence';
+	if (keyword === 'INDEX') return 'index';
 	return undefined;
 };
 
@@ -319,6 +326,7 @@ export const scanRelationNames = (
 				'TEMP',
 				'TEMPORARY',
 				'UNLOGGED',
+				'UNIQUE',
 			]);
 			while (
 				tokens[cursor]?.kind === 'word' &&
@@ -330,11 +338,43 @@ export const scanRelationNames = (
 			if (!statementType) continue;
 			cursor++;
 			if (
+				statementType === 'index' &&
+				tokens[cursor]?.value.toUpperCase() === 'CONCURRENTLY'
+			) {
+				cursor++;
+			}
+			if (
 				tokens[cursor]?.value.toUpperCase() === 'IF' &&
 				tokens[cursor + 1]?.value.toUpperCase() === 'NOT' &&
 				tokens[cursor + 2]?.value.toUpperCase() === 'EXISTS'
 			) {
 				cursor += 3;
+			}
+			if (statementType === 'index') {
+				// CREATE [UNIQUE] INDEX [name] ON <table> — the name is optional in
+				// PostgreSQL; the ON table is a reference. ON is consumed only here,
+				// never globally, so JOIN … ON never fabricates a relation.
+				let name: SourceRelationName | undefined;
+				if (tokens[cursor]?.value.toUpperCase() !== 'ON') {
+					const parsedName = parseRelationName(tokens, cursor);
+					if (!parsedName) continue;
+					name = parsedName.relation;
+					cursor = parsedName.next;
+				}
+				if (tokens[cursor]?.value.toUpperCase() !== 'ON') continue;
+				const target = parseRelationName(tokens, cursor + 1);
+				if (!target) continue;
+				if (name) {
+					relations.push({ role: 'declaration', statementType, ...name });
+				}
+				relations.push({
+					role: 'reference',
+					statementType: 'table',
+					referenceKind: 'on',
+					...target.relation,
+				});
+				index = target.next - 1;
+				continue;
 			}
 			const parsed = parseRelationName(tokens, cursor);
 			if (!parsed) continue;
@@ -347,7 +387,35 @@ export const scanRelationNames = (
 			continue;
 		}
 
-		if (keyword === 'REFERENCES' || keyword === 'FROM' || keyword === 'JOIN') {
+		if (
+			keyword === 'ALTER' &&
+			tokens[index + 1]?.value.toUpperCase() === 'TABLE'
+		) {
+			let cursor = index + 2;
+			if (
+				tokens[cursor]?.value.toUpperCase() === 'IF' &&
+				tokens[cursor + 1]?.value.toUpperCase() === 'EXISTS'
+			) {
+				cursor += 2;
+			}
+			const parsed = parseRelationName(tokens, cursor);
+			if (!parsed) continue;
+			relations.push({
+				role: 'reference',
+				statementType: 'table',
+				referenceKind: 'alter',
+				...parsed.relation,
+			});
+			index = parsed.next - 1;
+			continue;
+		}
+
+		if (
+			keyword === 'REFERENCES' ||
+			keyword === 'FROM' ||
+			keyword === 'JOIN' ||
+			keyword === 'INTO'
+		) {
 			const parsed = parseRelationName(tokens, index + 1);
 			if (!parsed) continue;
 			relations.push({

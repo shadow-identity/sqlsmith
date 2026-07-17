@@ -65,6 +65,7 @@ export class DependencyAnalyzer {
 					}
 					diagnostics.push({
 						code: 'EXTERNAL_REFERENCE',
+						severity: 'warning',
 						message: `External reference: '${statementIdentifier.display}' depends on '${dependencyIdentifier.display}' which is not defined in the input files`,
 						statementName: statementIdentifier.display,
 						statementKey: statementIdentifier.key,

@@ -94,4 +94,93 @@ describe('SQL identifier lexer', () => {
 			},
 		]);
 	});
+
+	it('recognizes CREATE INDEX declarations with their ON table reference', () => {
+		expect(
+			scanRelationNames('CREATE UNIQUE INDEX "Idx" ON "Users" ("Id");').map(
+				({ role, statementType, referenceKind, display }) => ({
+					role,
+					statementType,
+					referenceKind,
+					display,
+				}),
+			),
+		).toEqual([
+			{
+				role: 'declaration',
+				statementType: 'index',
+				referenceKind: undefined,
+				display: '"Idx"',
+			},
+			{
+				role: 'reference',
+				statementType: 'table',
+				referenceKind: 'on',
+				display: '"Users"',
+			},
+		]);
+	});
+
+	it('captures the target of an unnamed CREATE INDEX as an ON reference', () => {
+		expect(
+			scanRelationNames('CREATE INDEX ON users (name);').map(
+				({ role, referenceKind, display }) => ({
+					role,
+					referenceKind,
+					display,
+				}),
+			),
+		).toEqual([
+			{
+				role: 'reference',
+				referenceKind: 'on',
+				display: 'users',
+			},
+		]);
+	});
+
+	it('recognizes ALTER TABLE targets and INSERT INTO references', () => {
+		expect(
+			scanRelationNames(
+				'ALTER TABLE ONLY public.users ADD COLUMN age integer;',
+			).map(({ role, referenceKind, display }) => ({
+				role,
+				referenceKind,
+				display,
+			})),
+		).toEqual([
+			{
+				role: 'reference',
+				referenceKind: 'alter',
+				display: 'public.users',
+			},
+		]);
+
+		expect(
+			scanRelationNames('INSERT INTO audit.log (id) VALUES (1);').map(
+				({ role, referenceKind, display }) => ({
+					role,
+					referenceKind,
+					display,
+				}),
+			),
+		).toEqual([
+			{
+				role: 'reference',
+				referenceKind: 'into',
+				display: 'audit.log',
+			},
+		]);
+	});
+
+	it('does not treat JOIN ... ON as a relation reference', () => {
+		expect(
+			scanRelationNames('SELECT * FROM a JOIN b ON a.id = b.id;').map(
+				({ referenceKind, display }) => ({ referenceKind, display }),
+			),
+		).toEqual([
+			{ referenceKind: 'from', display: 'a' },
+			{ referenceKind: 'join', display: 'b' },
+		]);
+	});
 });

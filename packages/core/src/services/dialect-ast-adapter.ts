@@ -21,6 +21,13 @@ export type DialectFromItem =
 	  }
 	| { readonly kind: 'unsupported'; readonly value: unknown };
 
+export interface AstIndexDeclaration {
+	/** Index name; absent for unnamed indexes (PostgreSQL `CREATE INDEX ON …`). */
+	readonly name: AstRelationName | undefined;
+	/** Table the index is created on (`ON <table>`). */
+	readonly table: AstRelationName | undefined;
+}
+
 export interface DialectAstAdapter {
 	readonly dialect: SqlDialect;
 	declaration(
@@ -28,6 +35,9 @@ export interface DialectAstAdapter {
 		statementType: AstRelationStatementType,
 	): AstRelationName | undefined;
 	tableReferences(node: unknown): readonly AstRelationName[];
+	indexDeclaration(node: unknown): AstIndexDeclaration | undefined;
+	alterTarget(node: unknown): AstRelationName | undefined;
+	alterReferences(node: unknown): readonly AstRelationName[];
 	viewDefinition(node: unknown): unknown;
 	selectFromItems(select: unknown): readonly DialectFromItem[];
 }
@@ -83,6 +93,58 @@ const createNodeSqlParserAdapter = (dialect: SqlDialect): DialectAstAdapter =>
 				const tables = definition.reference_definition.table;
 				if (!Array.isArray(tables)) continue;
 				for (const table of tables) {
+					const reference = relation(table);
+					if (reference) references.push(reference);
+				}
+			}
+			return references;
+		},
+		indexDeclaration(node: unknown): AstIndexDeclaration | undefined {
+			if (
+				!isRecord(node) ||
+				node.type !== 'create' ||
+				node.keyword !== 'index'
+			) {
+				return undefined;
+			}
+			// sqlite reports the index name as {schema, name}; pg/mysql as a string
+			let name: AstRelationName | undefined;
+			if (typeof node.index === 'string') {
+				name = { name: node.index, schema: undefined };
+			} else if (isRecord(node.index) && typeof node.index.name === 'string') {
+				name = {
+					name: node.index.name,
+					schema:
+						typeof node.index.schema === 'string'
+							? node.index.schema
+							: undefined,
+				};
+			}
+			return { name, table: relation(node.table) ?? firstRelation(node.table) };
+		},
+		alterTarget(node: unknown): AstRelationName | undefined {
+			if (!isRecord(node) || node.type !== 'alter') return undefined;
+			return firstRelation(node.table);
+		},
+		alterReferences(node: unknown): readonly AstRelationName[] {
+			if (
+				!isRecord(node) ||
+				node.type !== 'alter' ||
+				!Array.isArray(node.expr)
+			) {
+				return [];
+			}
+			// ADD CONSTRAINT nests reference_definition under create_definitions;
+			// an inline ADD COLUMN … REFERENCES puts it directly on the expr item.
+			// Both differ from CREATE TABLE's flat create_definitions array.
+			const references: AstRelationName[] = [];
+			for (const item of node.expr) {
+				if (!isRecord(item)) continue;
+				const definition = isRecord(item.create_definitions)
+					? item.create_definitions.reference_definition
+					: item.reference_definition;
+				if (!isRecord(definition) || !Array.isArray(definition.table)) continue;
+				for (const table of definition.table) {
 					const reference = relation(table);
 					if (reference) references.push(reference);
 				}

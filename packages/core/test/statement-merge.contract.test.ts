@@ -53,7 +53,7 @@ describe('statement-level merging', () => {
 	});
 
 	describe('unrecognized (raw) statements', () => {
-		it('keeps every raw statement in the output exactly once', () => {
+		it('keeps every statement in the output exactly once', () => {
 			const merged = mergeScenario('postgresql', 'correct/raw_statements');
 
 			for (const snippet of [
@@ -83,13 +83,12 @@ describe('statement-level merging', () => {
 
 			// topological order of the tables themselves
 			expect(posUsers).toBeLessThan(posAudit);
-			// raw statements stay behind their anchor table
+			// index and alter are dependency-ordered after their table
 			expect(posIndex).toBeGreaterThan(posUsers);
 			expect(posAlter).toBeGreaterThan(posUsers);
-			expect(posInsertUsers).toBeGreaterThan(posUsers);
+			// raw INSERTs stay behind their nearest recognized in-file anchor
+			expect(posInsertUsers).toBeGreaterThan(posAlter);
 			expect(posInsertAudit).toBeGreaterThan(posAudit);
-			// audit's INSERT must not ride along with users' raw block
-			expect(posInsertAudit).toBeGreaterThan(posInsertUsers);
 		});
 	});
 

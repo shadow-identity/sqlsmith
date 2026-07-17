@@ -1,0 +1,3 @@
+ALTER TABLE users ADD CONSTRAINT users_org_fk FOREIGN KEY (org_id) REFERENCES orgs(id);
+
+ALTER TABLE users ADD COLUMN age INTEGER;

@@ -42,7 +42,22 @@ explicitly when the effective schema differs.
 - ✅ **Circular dependency detection** - Prevents invalid schemas
 - ✅ **Verified multi-dialect support** - PostgreSQL, SQLite, MySQL
 - ✅ **Sequences & Views** - Handles views in every dialect and PostgreSQL sequences
+- ✅ **Indexes & Alters** - `CREATE INDEX` and `ALTER TABLE` join the dependency
+  graph: an index orders after its table, an alter after every table it
+  references (including `ADD FOREIGN KEY` targets). Opt out with
+  `enableIndexes: false` / `enableAlters: false`.
 - ✅ **TypeScript support** - Full type safety and IntelliSense
+
+### Diagnostics
+
+`plan.diagnostics` carries structured diagnostics, each with a `severity`:
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `EXTERNAL_REFERENCE` | `warning` | A dependency is not defined in the input set (`allowExternalReferences`) |
+| `RAW_STATEMENTS` | `info` | Unrecognized statements are carried through verbatim |
+| `RAW_ONLY_FILE` | `warning` | A file with no recognized statements is appended at the end |
+| `RAW_CROSS_FILE_REFERENCE` | `warning` | A raw statement references a relation defined in a different file; its relative order is not guaranteed |
 
 ### Dialect capabilities
 

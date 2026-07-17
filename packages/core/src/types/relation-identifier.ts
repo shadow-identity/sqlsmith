@@ -28,8 +28,17 @@ export interface IdentifierPart extends SourceIdentifierPart {
 	readonly explicit: boolean;
 }
 
+/**
+ * Graph identity namespaces. `relation` covers declared relations (tables,
+ * views, sequences); `index` isolates index names from relation names;
+ * `statement` marks synthetic identities for statements that declare nothing
+ * of their own (ALTER TABLE, unnamed indexes). Namespaces lead the key tuple,
+ * so keys from different namespaces can never collide.
+ */
+export type IdentifierNamespace = 'relation' | 'index' | 'statement';
+
 export interface RelationIdentifier {
-	readonly namespace: 'relation';
+	readonly namespace: IdentifierNamespace;
 	readonly schema: IdentifierPart;
 	readonly name: IdentifierPart;
 	readonly display: string;
@@ -120,6 +129,39 @@ export const createRelationIdentifier = (
 
 	return Object.freeze({
 		namespace: 'relation' as const,
+		schema,
+		name,
+		display: source.display,
+		key,
+	});
+};
+
+/**
+ * Build an identifier outside the `relation` namespace. Extra discriminators
+ * join the key tuple, so identities that share a name can stay distinct (e.g.
+ * MySQL scopes index names per table — the target table key discriminates).
+ */
+export const createSecondaryIdentifier = (
+	namespace: 'index' | 'statement',
+	source: SourceRelationName,
+	rules: DialectRules,
+	discriminators: readonly string[] = [],
+): RelationIdentifier => {
+	const schema = identifierPart(
+		source.schema ?? rules.defaultSchema,
+		source.schema !== undefined,
+		rules,
+	);
+	const name = identifierPart(source.name, true, rules);
+	const key = JSON.stringify([
+		namespace,
+		schema.canonical,
+		name.canonical,
+		...discriminators,
+	]) as RelationKey;
+
+	return Object.freeze({
+		namespace,
 		schema,
 		name,
 		display: source.display,
