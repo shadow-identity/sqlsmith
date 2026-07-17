@@ -1,0 +1,5 @@
+{
+	"errorType": "MISSING_DEPENDENCY",
+	"exitCode": 3,
+	"messagePattern": "'idx_ghosts_name' depends on 'ghosts' which was not found"
+}

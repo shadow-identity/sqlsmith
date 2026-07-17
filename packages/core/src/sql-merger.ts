@@ -1,4 +1,6 @@
+import { AlterTableProcessor } from './processors/alter-table-processor.js';
 import type { StatementProcessor } from './processors/base-processor.js';
+import { CreateIndexProcessor } from './processors/create-index-processor.js';
 import { CreateSequenceProcessor } from './processors/create-sequence-processor.js';
 import { CreateTableProcessor } from './processors/create-table-processor.js';
 import { CreateViewProcessor } from './processors/create-view-processor.js';
@@ -32,6 +34,10 @@ export interface SqlMergerOptions {
 	defaultSchema?: string;
 	enableViews?: boolean;
 	enableSequences?: boolean;
+	/** Recognize CREATE INDEX statements and order them after their table. */
+	enableIndexes?: boolean;
+	/** Recognize ALTER TABLE statements and order them after every referenced table. */
+	enableAlters?: boolean;
 	/** Additional statement processors appended to the built-in processors. */
 	processors?: readonly StatementProcessor[];
 	/** Optional application logger; core only emits explicitly requested debug. */
@@ -91,6 +97,12 @@ export class SqlMerger {
 		if (options.enableSequences ?? true) {
 			processors.push(new CreateSequenceProcessor());
 		}
+		if (options.enableIndexes ?? true) {
+			processors.push(new CreateIndexProcessor());
+		}
+		if (options.enableAlters ?? true) {
+			processors.push(new AlterTableProcessor());
+		}
 		processors.push(...(options.processors ?? []));
 
 		this.#fileParser =
@@ -149,14 +161,19 @@ export class SqlMerger {
 		if (rawStatements.length > 0) {
 			diagnostics.push({
 				code: 'RAW_STATEMENTS',
+				severity: 'info',
 				message: `${rawStatements.length} unrecognized statement(s) are carried through verbatim`,
 				count: rawStatements.length,
 				statements: rawStatements.map((statement) => statement.name),
 			});
+			diagnostics.push(
+				...this.#collectCrossFileRawReferences(rawStatements, statements),
+			);
 		}
 		if (woven.tail.length > 0) {
 			diagnostics.push({
 				code: 'RAW_ONLY_FILE',
+				severity: 'warning',
 				message: `${woven.tail.length} statement(s) from files with no recognized statements are appended at the end of the output`,
 				count: woven.tail.length,
 				statements: woven.tail.map((statement) => statement.name),
@@ -189,6 +206,52 @@ export class SqlMerger {
 
 	getSupportedTypes(): string[] {
 		return this.#fileParser.getSupportedTypes();
+	}
+
+	/**
+	 * Raw statements are woven next to same-file neighbours, so their order
+	 * relative to relations defined in other files is not guaranteed — that is
+	 * the one genuinely risky raw case, and the one that warrants a warning.
+	 */
+	#collectCrossFileRawReferences(
+		rawStatements: readonly SqlStatement[],
+		recognized: readonly SqlStatement[],
+	): MergeDiagnostic[] {
+		const definedIn = new Map<string, string>();
+		for (const statement of recognized) {
+			if (statement.identifier) {
+				definedIn.set(statement.identifier.key, statement.filePath);
+			}
+		}
+
+		const diagnostics: MergeDiagnostic[] = [];
+		for (const raw of rawStatements) {
+			const reported = new Set<string>();
+			for (const reference of raw.referencedRelations ?? []) {
+				const definitionFilePath = definedIn.get(reference.key);
+				if (
+					definitionFilePath === undefined ||
+					definitionFilePath === raw.filePath ||
+					reported.has(reference.key)
+				) {
+					continue;
+				}
+				reported.add(reference.key);
+				const definitionFileName =
+					definitionFilePath.split('/').pop() ?? definitionFilePath;
+				diagnostics.push({
+					code: 'RAW_CROSS_FILE_REFERENCE',
+					severity: 'warning',
+					message: `Raw statement '${raw.name}' references '${reference.display}' defined in ${definitionFileName}; its order relative to that definition is not guaranteed`,
+					statementName: raw.name,
+					dependencyName: reference.display,
+					dependencyKey: reference.key,
+					filePath: raw.filePath,
+					definitionFilePath,
+				});
+			}
+		}
+		return diagnostics;
 	}
 
 	#weaveRawStatements(

@@ -58,11 +58,47 @@ describe('plan renderers', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('renderDiagnostics reports raw statements with their names', () => {
+	it('renderDiagnostics reports raw statements as info, without a warning prefix', () => {
 		renderDiagnostics(new Logger(), plan);
 
 		expect(stderrText()).toContain('unrecognized statement(s)');
+		expect(stderrText()).not.toContain('⚠️');
+	});
+
+	it('renderDiagnostic keeps the warning prefix for raw-only files', () => {
+		const diagnostic: MergeDiagnostic = {
+			code: 'RAW_ONLY_FILE',
+			severity: 'warning',
+			message:
+				'1 statement(s) from files with no recognized statements are appended at the end of the output',
+			count: 1,
+			statements: ['seed.sql#1'],
+		};
+
+		renderDiagnostic(new Logger(), diagnostic);
+
 		expect(stderrText()).toContain('⚠️');
+		expect(stderrText()).toContain('appended at the end');
+	});
+
+	it('renderDiagnostic warns about cross-file raw references with both files', () => {
+		const diagnostic: MergeDiagnostic = {
+			code: 'RAW_CROSS_FILE_REFERENCE',
+			severity: 'warning',
+			message:
+				"Raw statement 'audit.sql#2' references 'users' defined in users.sql; its order relative to that definition is not guaranteed",
+			statementName: 'audit.sql#2',
+			dependencyName: 'users',
+			dependencyKey: '["relation","public","users"]' as never,
+			filePath: '/virtual/audit.sql',
+			definitionFilePath: '/virtual/users.sql',
+		};
+
+		renderDiagnostic(new Logger(), diagnostic);
+
+		expect(stderrText()).toContain('⚠️');
+		expect(stderrText()).toContain('audit.sql#2');
+		expect(stderrText()).toContain('users.sql');
 	});
 
 	it('renderDiagnostic reports a single external reference diagnostic', () => {
@@ -77,6 +113,7 @@ describe('plan renderers', () => {
 		);
 		const diagnostic: MergeDiagnostic = {
 			code: 'EXTERNAL_REFERENCE',
+			severity: 'warning',
 			message: `External reference: '${orders.display}' depends on '${users.display}' which is not defined in the input files`,
 			statementName: orders.display,
 			statementKey: orders.key,

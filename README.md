@@ -23,12 +23,28 @@ SQLsmith is specifically designed for **SQL DDL statements** and focuses on:
 - ✅ **Self-referencing tables** (hierarchical structures)
 - ✅ **Sequences** (CREATE SEQUENCE statements that tables depend on)
 - ✅ **Views** (recursive JOIN/subquery/CTE/set-operation dependencies across tables and views)
-- ✅ **Mixed scenarios** combining tables, sequences, and views
+- ✅ **Indexes** (`CREATE INDEX` ordered after the table it targets)
+- ✅ **Table alterations** (`ALTER TABLE` ordered after the altered table and
+  after every table an added FOREIGN KEY references)
+- ✅ **Mixed scenarios** combining tables, sequences, views, indexes, and alters
+
+Because indexes and alters join dependency analysis, their target tables must
+exist in the input set (or run with `allowExternalReferences`); disable with
+`enableIndexes: false` / `enableAlters: false` to restore verbatim passthrough.
+`ALTER SEQUENCE`/`ALTER INDEX` stay raw, and `RENAME TO` only orders after the
+original table (the new name is not propagated).
+
+Dependencies are tracked at relation level, not column level: a statement that
+needs a column added by `ALTER TABLE` (e.g. an index or view on that column
+defined in another file) is only guaranteed to come after the table itself,
+not after the alter. Keep such statements after the alter in the same file.
 
 **Passed through verbatim (not analyzed for dependencies):** statements no
-processor recognizes — e.g. `CREATE INDEX`, `ALTER TABLE`, `INSERT`,
-`COMMENT ON` — are kept in the output next to the recognized statement they
-follow in their source file.
+processor recognizes — e.g. `INSERT`, `COMMENT ON` — are kept in the output
+next to the recognized statement they follow in their source file. This is
+reported as an informational diagnostic; a warning is emitted only when a raw
+statement references a relation defined in a *different* file, since only
+in-file order is preserved for raw statements.
 
 **Not currently supported:**
 - ❌ User-defined types (ENUM, DOMAIN, composite types)
@@ -38,7 +54,6 @@ follow in their source file.
 - ❌ Table inheritance or partitioning dependencies
 - ❌ Extensions and extension objects
 - ❌ Row Level Security policies
-- ❌ Indexes (they don't affect DDL creation order dependencies)
 
 This focused approach ensures reliable, fast processing of the most common schema migration scenario: **creating tables in the correct dependency order**.
 

@@ -8,6 +8,7 @@ export type StatementType =
 	| 'view'
 	| 'sequence'
 	| 'index'
+	| 'alter'
 	| 'function'
 	/** A statement no processor recognizes; carried through the merge verbatim. */
 	| 'raw';
@@ -27,6 +28,11 @@ export interface SqlStatement {
 	/** @deprecated Use `identifier.display`; raw statements retain a synthetic name. */
 	readonly name: string;
 	dependsOn: Dependency[];
+	/**
+	 * Relations a raw statement lexically mentions. Informational only — never
+	 * fed into the graph or source-order validation; used for diagnostics.
+	 */
+	referencedRelations?: readonly RelationIdentifier[];
 	filePath: string;
 	content: string;
 	/** 0-based position of the statement within its source file. */

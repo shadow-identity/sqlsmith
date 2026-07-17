@@ -248,7 +248,7 @@ describe('sqlsmith Vite hooks', () => {
 	it('shares log levels with core and renders each diagnostic once', async () => {
 		writeFileSync(
 			parentFile,
-			`${readFileSync(parentFile, 'utf8')}CREATE INDEX idx_users_id ON users(id);\n`,
+			`${readFileSync(parentFile, 'utf8')}INSERT INTO users (id) VALUES (1);\n`,
 		);
 		const silentOutput = join(scratch, 'silent.sql');
 		const silentPlugin = sqlsmith({
@@ -301,7 +301,7 @@ describe('sqlsmith Vite hooks', () => {
 		const addRawStatement = (): void => {
 			writeFileSync(
 				parentFile,
-				'CREATE TABLE users (id integer PRIMARY KEY);\nCREATE INDEX idx_users_id ON users(id);\n',
+				'CREATE TABLE users (id integer PRIMARY KEY);\nINSERT INTO users (id) VALUES (1);\n',
 			);
 		};
 
@@ -375,6 +375,25 @@ describe('sqlsmith Vite hooks', () => {
 
 			expect(count('unrecognized statement(s)')).toBe(1);
 			expect(count('SQLsmith: 1 known warning(s)')).toBe(1);
+		});
+
+		it('deduplicates cross-file raw reference warnings across rebuilds', async () => {
+			writeFileSync(
+				childFile,
+				'CREATE TABLE posts (id integer PRIMARY KEY);\nINSERT INTO users (id) VALUES (1);\n',
+			);
+			const plugin = createPlugin();
+			await configure(plugin, context, 'serve');
+			await callHook(plugin, 'buildStart', context);
+
+			expect(count("references 'users'")).toBe(1);
+
+			await callHook(plugin, 'watchChange', context, childFile, {
+				event: 'update',
+			});
+
+			expect(count("references 'users'")).toBe(1);
+			expect(count('known warning(s)')).toBe(1);
 		});
 
 		it('disables deduplication at debug level', async () => {

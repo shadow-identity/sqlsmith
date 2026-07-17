@@ -15,7 +15,10 @@ import {
 	SqlMergerError,
 } from '../types/errors.js';
 import type { DiscoveryOptions } from '../types/merge-plan.js';
-import { createDialectRules } from '../types/relation-identifier.js';
+import {
+	createDialectRules,
+	createRelationIdentifier,
+} from '../types/relation-identifier.js';
 import type {
 	SqlDialect,
 	SqlFile,
@@ -169,6 +172,8 @@ export class SqlFileParser {
 				dialectAdapter: getDialectAstAdapter(dialect),
 				relationNames: scanRelationNames(source, dialect),
 				cteAliases: scanCteAliases(source, dialect),
+				statementIndex: index,
+				lineNumber: chunk.startLine,
 			};
 
 			let ast: AST | AST[];
@@ -201,7 +206,7 @@ export class SqlFileParser {
 					filePath,
 					chunk.startLine,
 					processorContext,
-				) ?? this.#buildRawStatement(node, filePath, index);
+				) ?? this.#buildRawStatement(node, filePath, index, processorContext);
 
 			statement.content = (chunk.leadingTrivia + chunk.text).trim();
 			statement.orderInFile = index;
@@ -250,12 +255,26 @@ export class SqlFileParser {
 		return error instanceof Error ? error : new Error(String(error));
 	}
 
-	#buildRawStatement(node: AST, filePath: string, index: number): SqlStatement {
+	#buildRawStatement(
+		node: AST,
+		filePath: string,
+		index: number,
+		context: StatementProcessorContext,
+	): SqlStatement {
 		const fileName = filePath.split('/').pop() ?? filePath;
+		// Lexically mentioned relations feed cross-file diagnostics only; they
+		// never become dependencies, so raw statements stay out of the graph and
+		// source-order validation.
+		const referencedRelations = context.relationNames
+			.filter((relation) => relation.role === 'reference')
+			.map((relation) =>
+				createRelationIdentifier(relation, context.identifierRules),
+			);
 		return {
 			type: 'raw',
 			name: `${fileName}#${index + 1}`,
 			dependsOn: [],
+			referencedRelations,
 			filePath,
 			content: '',
 			ast: node,

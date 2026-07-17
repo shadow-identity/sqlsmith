@@ -54,10 +54,16 @@ export const sqlsmith = (options: SqlsmithPluginOptions): Plugin => {
 		isWithinInput(candidate) &&
 		resolve(candidate) !== output;
 
-	const diagnosticKey = (diagnostic: MergeDiagnostic): string =>
-		diagnostic.code === 'EXTERNAL_REFERENCE'
-			? `${diagnostic.code}|${diagnostic.statementKey}|${diagnostic.dependencyKey}`
-			: `${diagnostic.code}|${[...diagnostic.statements].sort().join(' ')}`;
+	const diagnosticKey = (diagnostic: MergeDiagnostic): string => {
+		switch (diagnostic.code) {
+			case 'EXTERNAL_REFERENCE':
+				return `${diagnostic.code}|${diagnostic.statementKey}|${diagnostic.dependencyKey}`;
+			case 'RAW_CROSS_FILE_REFERENCE':
+				return `${diagnostic.code}|${diagnostic.statementName}|${diagnostic.dependencyKey}`;
+			default:
+				return `${diagnostic.code}|${[...diagnostic.statements].sort().join(' ')}`;
+		}
+	};
 
 	const renderNewDiagnostics = (
 		diagnostics: readonly MergeDiagnostic[],

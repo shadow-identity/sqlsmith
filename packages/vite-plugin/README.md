@@ -51,7 +51,7 @@ SQL files, the dependency graph and the recommended execution order — the
 same renderers the CLI `info` command uses.
 
 At `warn` and `info`, diagnostics (external references, raw passthrough
-statements) are deduplicated across watch rebuilds:
+statements, cross-file raw references) are deduplicated across watch rebuilds:
 
 - the first build prints every diagnostic in full;
 - subsequent rebuilds print only new or changed diagnostics and collapse the

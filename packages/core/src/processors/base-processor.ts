@@ -14,6 +14,9 @@ export interface StatementProcessorContext {
 	readonly dialectAdapter?: DialectAstAdapter;
 	readonly relationNames: readonly LexedRelationName[];
 	readonly cteAliases: readonly SourceIdentifierPart[];
+	/** 0-based position of the statement within its source file. */
+	readonly statementIndex?: number;
+	readonly lineNumber?: number;
 }
 
 export interface StatementProcessor {

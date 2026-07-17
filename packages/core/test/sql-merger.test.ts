@@ -79,10 +79,14 @@ describe('SqlMerger public pipeline', () => {
 		const tableOnly = new SqlMerger({
 			enableViews: false,
 			enableSequences: false,
+			enableIndexes: false,
+			enableAlters: false,
 		});
 		const tableAndView = new SqlMerger({
 			enableViews: true,
 			enableSequences: false,
+			enableIndexes: false,
+			enableAlters: false,
 		});
 
 		expect(tableOnly.getSupportedTypes()).toEqual(['table']);
