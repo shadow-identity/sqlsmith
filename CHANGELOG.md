@@ -5,6 +5,55 @@ All notable user-visible changes to SQLsmith are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-07-17
+
+`CREATE INDEX` and `ALTER TABLE` become first-class, dependency-ordered
+statements, and raw-passthrough diagnostics gain severities. Published as one
+coordinated release of `@sqlsmith/core`, `@sqlsmith/cli` and
+`@sqlsmith/vite-plugin` 0.6.0.
+
+### Breaking changes
+
+- **`CREATE INDEX` and `ALTER TABLE` are now first-class statements.** They
+  join the dependency graph and topological sort: an index is emitted after
+  the table it targets, an alter after the altered table and after every table
+  an added FOREIGN KEY references — across files. Consequences:
+  - A missing target table now fails with `MISSING_DEPENDENCY` (previously the
+    statement passed through verbatim). Escape hatches: `allowExternalReferences: true`
+    turns it into an `EXTERNAL_REFERENCE` diagnostic, or disable recognition
+    entirely with the new `enableIndexes: false` / `enableAlters: false` options.
+  - An `ALTER TABLE`/`CREATE INDEX` placed before its table in the same file is
+    now rejected by source-order validation (like FK order for tables).
+  - These statements no longer trigger the `RAW_STATEMENTS` diagnostic.
+  - Not covered (still raw): `ALTER SEQUENCE`, `ALTER INDEX`; `RENAME TO` is
+    ordered after the original table without propagating the new name.
+  - Dependencies stay relation-level: a cross-file index or view on a column
+    added by `ALTER TABLE` is ordered after the table, not after the alter —
+    keep such statements after the alter in the same file.
+- **`MergeDiagnostic` gained a required `severity` field** (`'info' | 'warning'`)
+  and a new code, `RAW_CROSS_FILE_REFERENCE`. Consumers with an exhaustive
+  `switch` over `diagnostic.code` must handle the new variant.
+- **`RAW_STATEMENTS` is now informational** (rendered at `info` level, no `⚠️`).
+  A warning is reserved for the genuinely order-risky cases: `RAW_ONLY_FILE`
+  and the new `RAW_CROSS_FILE_REFERENCE` — a raw statement referencing a
+  relation defined in a *different* file (raw statements only preserve
+  in-file order).
+
+### Added
+
+- `CreateIndexProcessor` and `AlterTableProcessor` (all dialects: postgresql,
+  sqlite, mysql), with `enableIndexes` / `enableAlters` options (default `true`).
+- `IdentifierNamespace` (`'relation' | 'index' | 'statement'`) and
+  `createSecondaryIdentifier()`: index names live in their own namespace keyed
+  by target table (MySQL scopes index names per table), alters and unnamed
+  indexes get per-statement synthetic identities.
+- Raw statements now expose `referencedRelations` — relations they lexically
+  mention (used for cross-file diagnostics; never fed into the graph).
+- The identifier lexer recognizes `CREATE [UNIQUE] INDEX … ON`, `ALTER TABLE`
+  and `INSERT INTO` positions (new reference kinds `on`, `alter`, `into`).
+- The Vite plugin deduplicates `RAW_CROSS_FILE_REFERENCE` diagnostics across
+  watch rebuilds by statement and referenced relation.
+
 ## [0.5.0] — 2026-07-16
 
 A major overhaul of the core pipeline, CLI and Vite plugin. Published as one
